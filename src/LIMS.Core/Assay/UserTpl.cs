@@ -1,0 +1,39 @@
+﻿using Abp.Domain.Entities;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text;
+
+namespace LIMS.Assay
+{
+    [Table("sys_UserTpl")]
+    public class UserTpl : Entity, ISoftDelete
+    {
+        public long UserId { get; set; }
+        // 用户的化验模板ID
+        public string TplIds { get; set; }
+        // 类型——0-输入，1—查看
+        public int? Lx { get; set; }
+        public bool IsDeleted { get;set; }
+    }
+
+    public class V_Attendance: Entity
+    {
+        public string orgCode { get; set; }
+        public string orgName { get; set; }
+        public int tplId { get; set; }
+        public string tplName { get; set; }
+        public int tplSpecId { get; set; }
+        public string tplSpecName { get; set; }
+        public string tplElementNames { get; set; }
+        public string man_banci { get; set; }
+        public string man_luci { get; set; }
+        public DateTime signTime { get; set; }
+        public DateTime samplingdate { get; set; }
+        public string Lx { get; set; }
+        public string eleNames { get; set; }
+        public int Flag { get; set; }
+        public bool IsDeleted { get; set; }
+
+    }
+}
