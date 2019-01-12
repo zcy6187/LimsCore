@@ -21,6 +21,8 @@ namespace LIMS.Assay.Data
         // 分页查询数据
         public PagedResultDto<AttendanceDto> GetAttendances(PagedResultRequestDto pageQueryDto, string orgCode, int? tplId, int? specId, int flag, DateTime beginTime, DateTime endTime)
         {
+            beginTime = DateTime.Parse(beginTime.ToString("yyyy-MM-dd 00:00:00"));
+            endTime = DateTime.Parse(endTime.ToString("yyyy-MM-dd 23:59:59"));
             var query = _repository.GetAll().Where(x => !x.IsDeleted && x.signTime >= beginTime && x.signTime <= endTime);
             if (!string.IsNullOrEmpty(orgCode))
             {
