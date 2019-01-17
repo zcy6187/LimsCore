@@ -22,5 +22,8 @@ namespace LIMS.Assay.Data.Dto
         public string Lx { get; set; }
         public string eleNames { get; set; }
         public string Flag { get; set; }
+        public string samplingTime { get; set; }
+        public string selfCode { get; set; }
+        public string description { get; set; }
     }
 }

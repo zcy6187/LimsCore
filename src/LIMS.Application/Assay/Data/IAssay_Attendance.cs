@@ -10,6 +10,6 @@ namespace LIMS.Assay.Data
     public interface IAssay_Attendance
     {
         PagedResultDto<AttendanceDto> GetAttendances(
-            PagedResultRequestDto pageQueryDto, string orgCode,int? tplId,int? specId,int flag, DateTime beginTime, DateTime endTime);
+            PagedResultRequestDto pageQueryDto, string orgCode,int? tplId,string specId,int flag, DateTime beginTime, DateTime endTime);
     }
 }

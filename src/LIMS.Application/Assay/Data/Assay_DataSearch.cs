@@ -34,7 +34,7 @@ namespace LIMS.Assay.Data
 
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCode(string input)
         {
-            var retList = _tplRepostitory.GetAll().Where(x => x.OrgCode == input).Select(x => new Dtos.HtmlSelectDto()
+            var retList = _tplRepostitory.GetAll().Where(x => x.OrgCode.StartsWith(input)).Select(x => new Dtos.HtmlSelectDto()
             {
                 Key = x.Id.ToString(),
                 Value = x.TplName.ToString()

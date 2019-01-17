@@ -127,7 +127,7 @@ namespace LIMS.Assay.Base
             {
                 return "该令牌已存在!";
             }
-            string orgName = _orgRepository.Single(x => x.Code == input.OrgCode).OrgName;
+            string orgName = _orgRepository.Single(x => x.Code == input.OrgCode).AliasName;
             token.OrgCode = input.OrgCode;
             token.OrgName = orgName;
             token.TplIds = input.TplIds;

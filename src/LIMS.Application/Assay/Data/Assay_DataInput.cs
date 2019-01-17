@@ -51,7 +51,7 @@ namespace LIMS.Assay.Data
             }
             var specIdList=tplSpecimenList.Select(x => x.Id).ToList();
             List<TplElement> tplEleList=this._tplEleRep.GetAll().Where(x => x.IsDeleted == false && specIdList.Contains(x.TplSpecId))
-                .OrderBy(x=>x.TplSpecId).ThenByDescending(x=>x.OrderNo).ToList();
+                .OrderBy(x=>x.TplSpecId).ThenBy(x=>x.OrderNo).ToList();
 
             List<SpecInputDto> tempSpecInputList = new List<SpecInputDto>();
 

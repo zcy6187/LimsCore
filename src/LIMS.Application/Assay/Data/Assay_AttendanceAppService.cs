@@ -19,7 +19,8 @@ namespace LIMS.Assay.Data
         }
 
         // 分页查询数据
-        public PagedResultDto<AttendanceDto> GetAttendances(PagedResultRequestDto pageQueryDto, string orgCode, int? tplId, int? specId, int flag, DateTime beginTime, DateTime endTime)
+        // flag 未录入、部分录入、全部录入
+        public PagedResultDto<AttendanceDto> GetAttendances(PagedResultRequestDto pageQueryDto, string orgCode, int? tplId, string specId, int flag, DateTime beginTime, DateTime endTime)
         {
             beginTime = DateTime.Parse(beginTime.ToString("yyyy-MM-dd 00:00:00"));
             endTime = DateTime.Parse(endTime.ToString("yyyy-MM-dd 23:59:59"));
@@ -29,14 +30,18 @@ namespace LIMS.Assay.Data
                 query = query.Where(x => x.orgCode.StartsWith(orgCode));
             }
             int typeTplId = tplId ?? 0;
-            int typeSpecId = specId ?? 0;
             if (typeTplId > 0)
             {
                 query = query.Where(x => x.tplId == typeTplId);
             }
-            if (typeSpecId > 0)
+            if (!string.IsNullOrEmpty(specId))
             {
-                query = query.Where(x => x.tplSpecId == typeSpecId);
+                if (!specId.Contains("-1"))
+                {
+                    string[] eleIdArray = specId.Split(",", StringSplitOptions.RemoveEmptyEntries);
+                    int[] eleIdIntArray = Array.ConvertAll<string, int>(eleIdArray, s => int.Parse(s));
+                    query = query.Where(x => eleIdIntArray.Contains(x.tplSpecId));
+                }
             }
             if (flag < 3)
             {
@@ -70,9 +75,11 @@ namespace LIMS.Assay.Data
                         signTime = item.signTime.ToString("yyyy-MM-dd"),
                         signDate = item.signTime,
                         samplingdate = item.samplingdate.ToString("yyyy-MM-dd"),
-                        Lx = item.Lx,
+                        samplingTime=item.samplingdate.ToString("yyyy-MM-dd")+" "+item.samplingTime,
                         eleNames = item.eleNames,
-                        Flag = GetFlagName(item.Flag)
+                        Flag = GetFlagName(item.Flag),
+                        selfCode=item.selfCode,
+                        description=item.description
                     };
                     retList.Add(temp);
                 }
