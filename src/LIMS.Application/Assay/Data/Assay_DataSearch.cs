@@ -159,11 +159,11 @@ namespace LIMS.Assay.Data
                 Value=x.SpecName.ToString()
             }).ToList();
 
-            retList.Insert(0, new HtmlSelectDto()
-            {
-                Key="-1",
-                Value="全部样品"
-            });
+            //retList.Insert(0, new HtmlSelectDto()
+            //{
+            //    Key="-1",
+            //    Value="全部样品"
+            //});
 
             return retList;
         }
@@ -232,6 +232,9 @@ namespace LIMS.Assay.Data
 
         public DataSearchTableDto GetDataInfoByTemplateIdAndSpecId(int input, int[] specId,DateTime begin,DateTime endTime)
         {
+            begin = begin.ToLocalTime();
+            endTime = endTime.ToLocalTime();
+
             var typeInList=_typeInRepository.GetAll()
                 .Where(x => x.TplId == input && specId.Contains(x.SpecId) && string.Compare(x.SamplingDate, begin.ToString("yyyy-MM-dd")) >= 0 && string.Compare(x.SamplingTime, endTime.ToString("yyyy-MM-dd")) <= 0)
                 .OrderByDescending(x=>x.SamplingDate)
