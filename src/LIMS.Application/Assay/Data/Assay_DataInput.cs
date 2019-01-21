@@ -179,8 +179,10 @@ namespace LIMS.Assay.Data
                 attendanceEleIds = findAttendance.ElementIds;
                 typeIn.IsParallel = string.IsNullOrEmpty(findAttendance.MainScanId) ? false : true;
                 typeIn.MainId = findAttendance.MainScanId;
-                typeIn.SamplingDate = findAttendance.SignTime.ToString("yyyy-MM-dd");
-                typeIn.SamplingTime = findAttendance.SignTime.ToString("hh:mm");
+                typeIn.SamplingDate = findAttendance.SamplingDate.ToString("yyyy-MM-dd");
+                typeIn.SamplingTime = findAttendance.SamplingTime;
+                typeIn.SamplingTm = DateTime.Parse(findAttendance.SamplingDate.ToString("yyyy-MM-dd ") + findAttendance.SamplingTime);
+                typeIn.SignTm = findAttendance.SignTime;   
             }
             else
             {

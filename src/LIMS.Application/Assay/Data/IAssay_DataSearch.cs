@@ -11,8 +11,11 @@ namespace LIMS.Assay.Data
         List<Dtos.HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCode(string input);
         TemplateInfoDto GetTemplateInfoByTemplateId(int input);
         TemplateInfoDto GetTemplateInfoByTemplateIdAndSpecId(int input,int[] specId);
-        List<Dtos.HtmlSelectDto> GetSpecimenHtmlSelectByTemplateId(int input);
+        List<Dtos.HtmlSelectDto> GetSpecimenHtmlSelectByTemplateId(int input,bool flag);
         HtmlDataOperRetDto GetFormValueBySignId(int signId);
         DataSearchTableDto GetDataInfoByTemplateIdAndSpecId(int input, int[] specId, DateTime begin, DateTime endTime);
+
+        List<Dtos.HtmlSelectDto> GetUserTemplatesByUserId();
+        List<MultiTableDataInfoDto> GetMultiTableDataInfoBySpecId(int input, int[] specId, DateTime begin, DateTime endTime);
     }
 }

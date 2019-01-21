@@ -21,6 +21,8 @@
     
     <text name="Pages.AssaySearch" value="化验查询" />
     <text name="Pages.AssaySearch.SimpleSearch" value="横列查询" />
+    <text name="Pages.AssaySearch.UserMultiSearch" value="用户多表查询" />
+    <text name="Pages.AssaySearch.ZtMultiSearch" value="帐套多表查询" />
 
     <text name="Pages.System" value="系统管理" />
     <text name="Pages.System.User" value="用户管理" />

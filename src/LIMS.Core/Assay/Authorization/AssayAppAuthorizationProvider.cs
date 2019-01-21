@@ -29,6 +29,8 @@ namespace LIMS.Assay.Authorization
                 L(AssayAppPermissions.AssaySearch),
                 L(AssayAppPermissions.AssaySearch));
             pageAssaySearch.CreateChildPermission(AssayAppPermissions.SimpleSearch, L(AssayAppPermissions.SimpleSearch));
+            pageAssaySearch.CreateChildPermission(AssayAppPermissions.UserMultiTableSearch,L(AssayAppPermissions.UserMultiTableSearch));
+            pageAssaySearch.CreateChildPermission(AssayAppPermissions.ZtMultiTableSearch,L(AssayAppPermissions.ZtMultiTableSearch));
 
         }
 

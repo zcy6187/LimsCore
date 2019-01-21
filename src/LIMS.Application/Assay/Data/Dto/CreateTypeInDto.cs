@@ -22,6 +22,10 @@ namespace LIMS.Assay.Data.Dto
         public string SamplingTime { get; set; }
         // 采样日期
         public string SamplingDate { get; set; }
+        // 采样日期
+        public DateTime SamplingTm { get; set; }
+        // 签到日期
+        public DateTime SignTm { get; set; }
         // 数据类型
         public string Lx { get; set; }
         // 是否平行样

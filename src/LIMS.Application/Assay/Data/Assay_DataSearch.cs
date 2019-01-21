@@ -16,12 +16,14 @@ namespace LIMS.Assay.Data
         private IRepository<TplElement, int> _tplEleRepostitory;
         private IRepository<TypeInItem, int> _typeInItemRepository;
         private IRepository<TypeIn, int> _typeInRepository;
+        private IRepository<UserTpl, int> _userTplRepository;
 
         public Assay_DataSearch(IRepository<Template, int> tplRepostitory,
             IRepository<TplSpecimen, int> tplSpecRepostitory,
             IRepository<TplElement, int> tplEleRepostitory,
             IRepository<TypeInItem, int> typeInItemRepository,
-            IRepository<TypeIn, int> typeInRepository
+            IRepository<TypeIn, int> typeInRepository,
+            IRepository<UserTpl,int> userTplRepository
             )
         {
             this._tplRepostitory = tplRepostitory;
@@ -30,6 +32,7 @@ namespace LIMS.Assay.Data
 
             this._typeInItemRepository = typeInItemRepository;
             this._typeInRepository = typeInRepository;
+            this._userTplRepository = userTplRepository;
         }
 
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCode(string input)
@@ -151,7 +154,8 @@ namespace LIMS.Assay.Data
             return null;
         }
 
-        public List<Dtos.HtmlSelectDto> GetSpecimenHtmlSelectByTemplateId(int input)
+        // 是否插入全部
+        public List<Dtos.HtmlSelectDto> GetSpecimenHtmlSelectByTemplateId(int input,bool flag)
         {
             var retList = this._tplSpecRepostitory.GetAll().Where(x => x.IsDeleted == false && x.TplId == input).Select(x => new Dtos.HtmlSelectDto()
             {
@@ -159,11 +163,14 @@ namespace LIMS.Assay.Data
                 Value=x.SpecName.ToString()
             }).ToList();
 
-            //retList.Insert(0, new HtmlSelectDto()
-            //{
-            //    Key="-1",
-            //    Value="全部样品"
-            //});
+            if (flag)
+            {
+                retList.Insert(0, new HtmlSelectDto()
+                {
+                    Key = "-1",
+                    Value = "全部样品"
+                });
+            }
 
             return retList;
         }
@@ -302,6 +309,108 @@ namespace LIMS.Assay.Data
                 eleIndex += specItem.Count;
             }
             return strList;
+        }
+
+        // 获取用户的所有模板
+        public List<Dtos.HtmlSelectDto> GetUserTemplatesByUserId()
+        {
+            long thisId=AbpSession.UserId??-1;
+            List<Dtos.HtmlSelectDto> templateList = new List<HtmlSelectDto>();
+            if (thisId == -1)
+            {
+                return templateList;
+            }
+            var user=this._userTplRepository.GetAll().Where(x=>x.UserId==thisId).FirstOrDefault();
+            if (user==null)
+            {
+                return templateList;
+            };
+
+            string tpl = user.TplIds;
+            string[] tplStrArray=tpl.Split(",",StringSplitOptions.RemoveEmptyEntries);
+            int[] intArray=Array.ConvertAll<string, int>(tplStrArray, s => int.Parse(s));
+
+            var tplList=_tplRepostitory.GetAll().Where(x => intArray.Contains(x.Id)).ToList();
+            foreach (var item in tplList)
+            {
+                templateList.Add(new Dtos.HtmlSelectDto()
+                {
+                    Key=item.Id.ToString(),
+                    Value=item.TplName
+                });
+            }
+
+            return templateList;
+        }
+
+        // 多表数据
+        public List<MultiTableDataInfoDto> GetMultiTableDataInfoBySpecId(int input, int[] specId, DateTime begin, DateTime endTime)
+        {
+            begin = DateTime.Parse(begin.ToLocalTime().ToString("yyyy-MM-dd 00:00:00"));
+            endTime = DateTime.Parse(endTime.ToLocalTime().ToString("yyyy-MM-dd 23:59:59"));
+
+            // 所有样品数据
+            var typeInList = _typeInRepository.GetAll()
+                .Where(x => x.TplId == input && specId.Contains(x.SpecId) && x.SignTm>=begin && x.SignTm<=endTime)
+                .OrderByDescending(x => x.SignTm)
+                .ToList();
+            // 所有样品元素数据
+            var typeInIdArray =typeInList.Select(x => x.Id).ToList();
+            var typeInItemList = _typeInItemRepository.GetAll()
+                .Where(x=>typeInIdArray.Contains(x.TypeInId)).ToList();
+            //获取样品
+            var specSchemaInfoList = this._tplEleRepostitory.GetAll().Where(x => specId.Contains(x.TplSpecId) && x.IsDeleted == false).ToList();
+
+            List<MultiTableDataInfoDto> tableInfoList = new List<MultiTableDataInfoDto>();
+
+            foreach (var item in specId)
+            {
+                // 获取该样品的所有元素
+                var eles=specSchemaInfoList.Where(x => x.TplSpecId == item).OrderBy(x => x.OrderNo).ToList();
+                var eleTableHeadData = eles.Select(x => string.Format("{0}({1})", x.ElementName, x.UnitName)).ToList();
+                string title = eles.First().SpecName;
+                // 所有该样品数据
+                var tempTypeInList = typeInList.Where(x => x.SpecId == item);
+                List<List<string>> eleList = new List<List<string>>();
+                if (tempTypeInList.Count() >0)
+                {
+                    // 所有样品下的元素数据
+                    foreach (var tItem in tempTypeInList)
+                    {
+                        List<string> tempEleList = new List<string>();
+                        // 所有元素
+                        var tempTypeInItemList = typeInItemList.Where(x => x.TypeInId == tItem.Id).ToList();
+                        if (tempTypeInItemList.Count() > 0)
+                        {
+                            tempEleList.Add(tItem.SignTm.ToString("yyyy-MM-dd HH:mm"));
+                            tempEleList.Add(tItem.SamplingTm.ToString("yyyy-MM-dd HH:mm"));
+                            foreach (var ele in eles)
+                            {
+                                var tempEle = tempTypeInItemList.FirstOrDefault(x => x.ElementId == ele.Id);
+                                if (tempEle != null)
+                                {
+                                    tempEleList.Add(tempEle.EleValue);
+                                }
+                                else
+                                {
+                                    tempEleList.Add(string.Empty);
+                                }
+                            }
+                            eleList.Add(tempEleList);
+                        }
+                    }
+                }
+                MultiTableDataInfoDto tempData = new MultiTableDataInfoDto()
+                {
+                    TableTitle = title,
+                    TableHead = eleTableHeadData,
+                    TableData = eleList
+                };
+
+                tableInfoList.Add(tempData);
+            }
+
+            return tableInfoList;
         }
     }
 }
