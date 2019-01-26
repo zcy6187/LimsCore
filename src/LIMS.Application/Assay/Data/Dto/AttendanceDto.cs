@@ -25,5 +25,6 @@ namespace LIMS.Assay.Data.Dto
         public string samplingTime { get; set; }
         public string selfCode { get; set; }
         public string description { get; set; }
+        public string scanId { get; set; }
     }
 }

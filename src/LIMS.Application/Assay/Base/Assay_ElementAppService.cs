@@ -87,7 +87,7 @@ namespace LIMS.Assay.Base
 
              _elementRepository.Update(entity);
 
-            return "添加成功！";
+            return "修改成功！";
         }
 
         public List<Dtos.HtmlSelectDto> GetHtmlSelectElements()

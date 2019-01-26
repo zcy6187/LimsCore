@@ -336,14 +336,14 @@ namespace LIMS.Assay.Data
                 templateList.Add(new Dtos.HtmlSelectDto()
                 {
                     Key=item.Id.ToString(),
-                    Value=item.TplName
+                    Value=string.Format("{0}-{1}",item.TplName,item.OrgName)
                 });
             }
 
             return templateList;
         }
 
-        // 多表数据
+        // 多表数据查询
         public List<MultiTableDataInfoDto> GetMultiTableDataInfoBySpecId(int input, int[] specId, DateTime begin, DateTime endTime)
         {
             begin = DateTime.Parse(begin.ToLocalTime().ToString("yyyy-MM-dd 00:00:00"));

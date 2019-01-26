@@ -79,7 +79,8 @@ namespace LIMS.Assay.Data
                         eleNames = item.eleNames,
                         Flag = GetFlagName(item.Flag),
                         selfCode=item.selfCode,
-                        description=item.description
+                        description=item.description,
+                        scanId=item.scanId
                     };
                     retList.Add(temp);
                 }
