@@ -12,15 +12,15 @@ namespace LIMS.Assay.Data
 {
     public class Assay_DataInput : LIMSAppServiceBase, IAssay_DataInput
     {
-        private IRepository<Template,int> _tplRep;
-        private IRepository<TplSpecimen,int> _tplSpecRep;
-        private IRepository<TplElement,int> _tplEleRep;
+        private IRepository<Template, int> _tplRep;
+        private IRepository<TplSpecimen, int> _tplSpecRep;
+        private IRepository<TplElement, int> _tplEleRep;
         private IRepository<Attendance, int> _attendanceRep;
         private IRepository<TypeIn, int> _typeInRep;
         private IRepository<TypeInItem, int> _typeInItemRep;
 
-        public Assay_DataInput(IRepository<Template, int> tplRep, 
-            IRepository<TplSpecimen, int> tplSpecRep, 
+        public Assay_DataInput(IRepository<Template, int> tplRep,
+            IRepository<TplSpecimen, int> tplSpecRep,
             IRepository<TplElement, int> tplEleRep,
             IRepository<Attendance, int> attendanceRep,
             IRepository<TypeIn, int> typeInRep,
@@ -39,25 +39,27 @@ namespace LIMS.Assay.Data
         // 获取输入框架
         public TemplateSchemaInputDto GetTemplateSchemaInputDtoByTplId(int tplId, int[] specId)
         {
-            var template=_tplRep.GetAll().Where(x => x.IsDeleted == false && x.Id == tplId).Single();
+            var template = _tplRep.GetAll().Where(x => x.IsDeleted == false && x.Id == tplId).Single();
             List<TplSpecimen> tplSpecimenList = new List<TplSpecimen>();
-            if (specId.Count() == 0 || specId.Contains(-1)) {
+            if (specId.Count() == 0 || specId.Contains(-1))
+            {
                 tplSpecimenList = _tplSpecRep.GetAll().Where(x => x.IsDeleted == false && x.TplId == tplId)
-                    .OrderBy(x=>x.TplId).ThenByDescending(x=>x.OrderNum).ToList();
+                    .OrderBy(x => x.TplId).ThenByDescending(x => x.OrderNum).ToList();
             }
-            else {
+            else
+            {
                 tplSpecimenList = _tplSpecRep.GetAll().Where(x => x.IsDeleted == false && specId.Contains(x.Id))
                      .OrderBy(x => x.TplId).ThenByDescending(x => x.OrderNum).ToList();
             }
-            var specIdList=tplSpecimenList.Select(x => x.Id).ToList();
-            List<TplElement> tplEleList=this._tplEleRep.GetAll().Where(x => x.IsDeleted == false && specIdList.Contains(x.TplSpecId))
-                .OrderBy(x=>x.TplSpecId).ThenBy(x=>x.OrderNo).ToList();
+            var specIdList = tplSpecimenList.Select(x => x.Id).ToList();
+            List<TplElement> tplEleList = this._tplEleRep.GetAll().Where(x => x.IsDeleted == false && specIdList.Contains(x.TplSpecId))
+                .OrderBy(x => x.TplSpecId).ThenBy(x => x.OrderNo).ToList();
 
             List<SpecInputDto> tempSpecInputList = new List<SpecInputDto>();
 
             foreach (var item in tplSpecimenList)
             {
-                var tempEleList=tplEleList.Where(x => x.TplSpecId == item.Id && x.IsDeleted == false).ToList();
+                var tempEleList = tplEleList.Where(x => x.TplSpecId == item.Id && x.IsDeleted == false).ToList();
                 List<ElementInputDto> tempEleInputList = new List<ElementInputDto>();
                 foreach (var ele in tempEleList)
                 {
@@ -67,7 +69,7 @@ namespace LIMS.Assay.Data
                     tempEleInput.TplId = tplId;
                     tempEleInput.UnitName = ele.UnitName;
                     tempEleInput.EleName = ele.ElementName;
-                    tempEleInput.FormName="ele"+ele.Id.ToString();
+                    tempEleInput.FormName = "ele" + ele.Id.ToString();
                     tempEleInputList.Add(tempEleInput);
                 }
 
@@ -121,7 +123,7 @@ namespace LIMS.Assay.Data
                 }
                 else  // 更新
                 {
-                    UpdateOrAddSpecData(item,tplId,int.Parse(item.OldId),samplingDate,samplingTime);
+                    UpdateOrAddSpecData(item, tplId, int.Parse(item.OldId), samplingDate, samplingTime);
                 }
             }
 
@@ -135,7 +137,7 @@ namespace LIMS.Assay.Data
         }
 
         #region 添加样品
-        private void AddSpecDataToTable(SpecDataDto item,int tplId,DateTime samplingDate,string samplingTime)
+        private void AddSpecDataToTable(SpecDataDto item, int tplId, DateTime samplingDate, string samplingTime)
         {
             // 如果没有元素数据直接返回
             List<EleDataDto> eleDataList = item.EleDataList;
@@ -148,7 +150,8 @@ namespace LIMS.Assay.Data
             typeIn.IsParallel = false;
             string attendanceEleIds = string.Empty;
             Attendance findAttendance = null;
-            // 签到Id和录入Id都为空，则需要去签到表中检测签到Id
+
+            // 签到Id和typeIn的Id都为空，则需要去签到表中检测签到Id
             if (string.IsNullOrEmpty(item.SignId))
             {
                 DateTime beginTime = DateTime.Parse(string.Format("{0} {1}:00", samplingDate.ToString("yyyy-MM-dd"), samplingTime));
@@ -172,6 +175,7 @@ namespace LIMS.Assay.Data
             typeIn.CreatorId = (int)AbpSession.UserId;
 
 
+            TypeIn tempTypeIn = null;
             // 签到日期和时间
             if (findAttendance != null)
             {
@@ -182,27 +186,42 @@ namespace LIMS.Assay.Data
                 typeIn.SamplingDate = findAttendance.SamplingDate.ToString("yyyy-MM-dd");
                 typeIn.SamplingTime = findAttendance.SamplingTime;
                 typeIn.SamplingTm = DateTime.Parse(findAttendance.SamplingDate.ToString("yyyy-MM-dd ") + findAttendance.SamplingTime);
-                typeIn.SignTm = findAttendance.SignTime;   
+                typeIn.SignTm = findAttendance.SignTime;
+                // 如果签到信息存在，则去TypeIn表中查找是否有录入记录
+                tempTypeIn=_typeInRep.GetAll().Where(x => x.SignId == typeIn.SignId && x.IsDeleted == false).FirstOrDefault();
             }
             else
             {
                 typeIn.SamplingDate = samplingDate.ToString("yyyy-MM-dd");
                 typeIn.SamplingTime = samplingTime;
             }
-            
+
             // 获取化验元素信息
-            eleDataList= eleDataList.OrderBy(x => x.EleId).ToList();
-            string elementIds=string.Join(",",eleDataList.Select(x => x.EleId));
+            eleDataList = eleDataList.OrderBy(x => x.EleId).ToList();
+            string elementIds = string.Join(",", eleDataList.Select(x => x.EleId));
             string elementNames = string.Join(",", eleDataList.Select(x => x.EleName));
 
             typeIn.EleIds = elementIds;
             typeIn.EleNames = elementNames;
             typeIn.IsDeleted = false;
 
-            TypeIn temp = typeIn.MapTo<TypeIn>();
 
-            // 插入到数据到TypeIn
-            int tempTypeInId=_typeInRep.InsertAndGetId(temp);
+            if (tempTypeIn == null)
+            {
+                tempTypeIn= typeIn.MapTo<TypeIn>();
+            }
+
+            int tempTypeInId = -1;
+            // 签到表中已经存在记录，则更新
+            if (tempTypeIn.Id > 0)
+            {
+                _typeInRep.Update(tempTypeIn);
+            }
+            else
+            {
+                tempTypeInId = _typeInRep.InsertAndGetId(tempTypeIn);
+            }
+             
 
             // 更新签到表信息
             if (findAttendance != null)
@@ -219,12 +238,12 @@ namespace LIMS.Assay.Data
                 _attendanceRep.UpdateAsync(findAttendance);
             }
 
-            AddElementDataToTable(item,tempTypeInId,tplId);
+            AddElementDataToTable(item, tempTypeInId, tplId);
         }
 
         // 添加元素
         [UnitOfWork]
-        private void AddElementDataToTable(SpecDataDto specDto,int typeInId,int tplId)
+        private void AddElementDataToTable(SpecDataDto specDto, int typeInId, int tplId)
         {
             foreach (var item in specDto.EleDataList)
             {
@@ -246,7 +265,7 @@ namespace LIMS.Assay.Data
 
         #region 更新或者添加元素
         [UnitOfWork]
-        private void UpdateOrAddSpecData(SpecDataDto item, int tplId,int oldTypeInId, DateTime samplingDate, string samplingTime)
+        private void UpdateOrAddSpecData(SpecDataDto item, int tplId, int oldTypeInId, DateTime samplingDate, string samplingTime)
         {
             // 如果没有元素数据直接返回
             List<EleDataDto> eleDataList = item.EleDataList;
@@ -261,7 +280,7 @@ namespace LIMS.Assay.Data
             if (!string.IsNullOrEmpty(findTypeIn.SignId))
             {
                 int tempAttenId = int.Parse(findTypeIn.SignId);
-                findAttendance = _attendanceRep.Single(x=>x.Id==tempAttenId);
+                findAttendance = _attendanceRep.Single(x => x.Id == tempAttenId);
             }
 
             findTypeIn.SamplingDate = samplingDate.ToString("yyyy-MM-dd");
@@ -275,13 +294,13 @@ namespace LIMS.Assay.Data
             string newElementIds = findTypeIn.EleIds + "," + elementIds;
             string newElementNames = findTypeIn.EleNames + "," + elementNames;
             // 将字符串 转变为 数值数组，并去重
-            var idArray=Array.ConvertAll<string,int>(newElementIds.Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct().ToArray(), x => int.Parse(x));
+            var idArray = Array.ConvertAll<string, int>(newElementIds.Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct().ToArray(), x => int.Parse(x));
             // 从小到大排序
             Array.Sort(idArray);
-            newElementIds = string.Join(',',idArray);
+            newElementIds = string.Join(',', idArray);
             // 元素名称去掉重复项
-            newElementNames=string.Join(',',
-                newElementNames.Split(",",StringSplitOptions.RemoveEmptyEntries).Distinct());
+            newElementNames = string.Join(',',
+                newElementNames.Split(",", StringSplitOptions.RemoveEmptyEntries).Distinct());
 
             findTypeIn.EleIds = newElementIds;
             findTypeIn.EleNames = newElementNames;
@@ -289,7 +308,7 @@ namespace LIMS.Assay.Data
             // 更新TypeIn
             _typeInRep.UpdateAsync(findTypeIn);
             // 更新或者添加TypeInItem
-            UpdateOrAddElement(item,findTypeIn.Id,tplId);
+            UpdateOrAddElement(item, findTypeIn.Id, tplId);
 
             // 更新签到表信息
             if (findAttendance != null)
@@ -305,7 +324,7 @@ namespace LIMS.Assay.Data
 
                 _attendanceRep.UpdateAsync(findAttendance);
             }
-            
+
         }
 
         /*
@@ -319,7 +338,7 @@ namespace LIMS.Assay.Data
             {
                 if (string.IsNullOrEmpty(item.OldId))  // 添加
                 {
-                    var tempEleItem = _typeInItemRep.FirstOrDefault(x => x.TplId==tplId && x.TypeInId==typeInId && x.ElementId==item.EleId && x.SpecimenId==item.SpecId && !x.IsDeleted);
+                    var tempEleItem = _typeInItemRep.FirstOrDefault(x => x.TplId == tplId && x.TypeInId == typeInId && x.ElementId == item.EleId && x.SpecimenId == item.SpecId && !x.IsDeleted);
                     if (tempEleItem == null)
                     {
                         TypeInItem tempEleDto = new TypeInItem();
@@ -378,7 +397,7 @@ namespace LIMS.Assay.Data
                 foreach (var eleItem in eleToken)
                 {
                     var tempEle = (JProperty)eleItem;
-                    if(i==0) //签到Id
+                    if (i == 0) //签到Id
                     {
                         signId = tempEle.Value.ToString();
                     }
@@ -390,7 +409,7 @@ namespace LIMS.Assay.Data
                     {
                         dynamic eleData = JToken.Parse(tempEle.Value.ToString());
                         EleDataDto eleObj = new EleDataDto();
-                       
+
 
                         // 如果元素值不为空 或者 元素的原Id不为空，则将数据置入数组
                         // 当元素原Id不为空时，代表，数据可能是更新，不管将元素是否有值，因为可能需要将有值的元素更新为无值
@@ -404,7 +423,7 @@ namespace LIMS.Assay.Data
                             eleObj.EleValue = eleData.eleValue;
                             eleObj.OperatorId = eleData.operId;
                             eleObj.EleName = eleData.eleName;
-                            
+
                             eleList.Add(eleObj);
                         }
                     }

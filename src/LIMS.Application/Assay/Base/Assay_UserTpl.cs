@@ -107,5 +107,11 @@ namespace LIMS.Assay.Base
 
             return _utplRepository.UpdateAsync(editItem);
         }
+        public Task DeleteUserTplById(int inputId)
+        {
+            var deleteItem=_utplRepository.Single(x => x.Id == inputId);
+            deleteItem.IsDeleted = true;
+            return _utplRepository.UpdateAsync(deleteItem);
+        }
     }
 }

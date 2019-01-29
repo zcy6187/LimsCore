@@ -11,5 +11,6 @@ namespace LIMS.Assay.Base
         List<EditVUserTplDto> SearchUserTpls(string input);
         Task AddUserTpl(CreateUserTplDto input);
         Task EditUserTpl(EditVUserTplDto input);
+        Task DeleteUserTplById(int inputId);
     }
 }
