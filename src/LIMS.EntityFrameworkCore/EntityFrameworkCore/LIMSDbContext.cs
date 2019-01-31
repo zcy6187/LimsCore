@@ -33,6 +33,7 @@ namespace LIMS.EntityFrameworkCore
         public DbSet<SysManager.ZtCode> ZtCode { get; set; }
         public DbSet<Assay.AssayUser> AssayUser { get; set; }
         public DbSet<SysManager.UserZt> UserZt { get; set; }
+        public DbSet<SysManager.UserTplSpecimens> UserTplSpecimen { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -79,6 +80,9 @@ namespace LIMS.EntityFrameworkCore
 
             modelBuilder.Entity<SysManager.ZtCode>().Property(x => x.IsDeleted)
                 .HasDefaultValue(0);
+
+            modelBuilder.Entity<SysManager.UserTplSpecimens>().Property(x => x.IsDeleted)
+               .HasDefaultValue(0);
 
             modelBuilder.Entity<V_UserTpl>(entity =>
             {

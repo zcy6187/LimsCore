@@ -68,7 +68,7 @@ namespace LIMS.Assay
         public string Name { get; set; }
         public string TplIds { get; set; }
         public int? Lx { get; set; }
-        public bool? IsDeleted { get; set; }
+        public bool IsDeleted { get; set; }
         public int? UserTplId { get; set; }
     }
 }

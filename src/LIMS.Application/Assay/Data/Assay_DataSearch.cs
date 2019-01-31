@@ -5,6 +5,7 @@ using System.Text;
 using Abp.Domain.Repositories;
 using LIMS.Assay.Data.Dto;
 using LIMS.Dtos;
+using LIMS.SysManager;
 using Newtonsoft.Json.Linq;
 
 namespace LIMS.Assay.Data
@@ -17,13 +18,15 @@ namespace LIMS.Assay.Data
         private IRepository<TypeInItem, int> _typeInItemRepository;
         private IRepository<TypeIn, int> _typeInRepository;
         private IRepository<UserTpl, int> _userTplRepository;
+        private IRepository<UserTplSpecimens,int> _userTplSpecimenRepository;
 
         public Assay_DataSearch(IRepository<Template, int> tplRepostitory,
             IRepository<TplSpecimen, int> tplSpecRepostitory,
             IRepository<TplElement, int> tplEleRepostitory,
             IRepository<TypeInItem, int> typeInItemRepository,
             IRepository<TypeIn, int> typeInRepository,
-            IRepository<UserTpl,int> userTplRepository
+            IRepository<UserTpl,int> userTplRepository,
+            IRepository<UserTplSpecimens, int> userTplSpecimenRepository
             )
         {
             this._tplRepostitory = tplRepostitory;
@@ -33,6 +36,7 @@ namespace LIMS.Assay.Data
             this._typeInItemRepository = typeInItemRepository;
             this._typeInRepository = typeInRepository;
             this._userTplRepository = userTplRepository;
+            this._userTplSpecimenRepository = userTplSpecimenRepository;
         }
 
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCode(string input)
@@ -161,6 +165,40 @@ namespace LIMS.Assay.Data
             {
                 Key=x.Id.ToString(),
                 Value=x.SpecName.ToString()
+            }).ToList();
+
+            if (flag)
+            {
+                retList.Insert(0, new HtmlSelectDto()
+                {
+                    Key = "-1",
+                    Value = "全部样品"
+                });
+            }
+
+            return retList;
+        }
+
+
+        // 查用户模板对应的样品，并到用户样品表中获取对应的模板样品
+        public List<Dtos.HtmlSelectDto> GetSpecimenHtmlSelectByTemplateIdAndChargeSpecimen(int input, bool flag)
+        {
+            var userSpecimen=this._userTplSpecimenRepository.GetAll().Where(x => x.UserId == AbpSession.UserId && x.TplId == input);
+            int[] specimenArray = null;
+            if (userSpecimen.Count() > 0)
+            {
+                var specArray=userSpecimen.First().SpecimenIds.Split(',',StringSplitOptions.RemoveEmptyEntries).ToArray();
+                specimenArray = Array.ConvertAll<string, int>(specArray, x => int.Parse(x));
+            }
+            var query = this._tplSpecRepostitory.GetAll().Where(x => x.TplId == input);
+            if (specimenArray != null)
+            {
+                query=query.Where(x => specimenArray.Contains(x.Id));
+            }
+            var retList = query.Select(x => new Dtos.HtmlSelectDto()
+            {
+                Key = x.Id.ToString(),
+                Value = x.SpecName.ToString()
             }).ToList();
 
             if (flag)

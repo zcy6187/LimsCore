@@ -13,5 +13,6 @@ namespace LIMS.Assay.Base.Dto
         public string TplIds { get; set; }
         // 类型——0-输入，1—查看
         public int? Lx { get; set; }
+        public List<TplSpecimenDto> specimens{get;set;}
     }
 }
