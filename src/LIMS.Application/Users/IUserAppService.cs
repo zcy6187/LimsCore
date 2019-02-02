@@ -15,5 +15,9 @@ namespace LIMS.Users
 
         List<UserZtDto> GetUserZt(long userId);
 
+        Task ResetUserPassword(long uid);
+
+        Task ChangePassword(ChangePasswordInput input);
+
     }
 }

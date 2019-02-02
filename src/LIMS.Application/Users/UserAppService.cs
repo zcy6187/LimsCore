@@ -18,6 +18,7 @@ using LIMS.Roles.Dto;
 using LIMS.Users.Dto;
 using LIMS.SysManager;
 using Abp.Domain.Uow;
+using Abp.UI;
 
 namespace LIMS.Users
 {
@@ -208,6 +209,49 @@ namespace LIMS.Users
             }
 
             return userZtList;
+        }
+
+        public async Task ChangePassword(ChangePasswordInput input)
+        {
+            input.OldPassword = input.OldPassword.Trim();
+            input.NewPassword = input.NewPassword.Trim();
+
+            //判断旧密码是否正确
+            if (string.IsNullOrWhiteSpace(input.OldPassword) || string.IsNullOrWhiteSpace(input.NewPassword))
+            {
+                throw new UserFriendlyException("密码不能为空");
+            }
+
+            if (input.OldPassword == input.NewPassword)
+            {
+                throw new UserFriendlyException("新旧密码不能相同");
+            }
+
+            //获取abp用户
+            var user = await _userManager.GetUserByIdAsync(AbpSession.UserId.Value);
+
+            //判断新密码是否正确
+            var result = _passwordHasher.VerifyHashedPassword(user, user.Password, input.OldPassword);
+            if (result == PasswordVerificationResult.Failed)
+            {
+                throw new UserFriendlyException("旧密码错误");
+            }
+
+            //新密码hash
+            var hash = _passwordHasher.HashPassword(user, input.NewPassword);
+            user.Password = hash;
+            await _userManager.UpdateAsync(user);
+        }
+
+        public async Task ResetUserPassword(long uid)
+        {
+            //获取abp用户
+            var user = await _userManager.GetUserByIdAsync(uid);
+
+            //新密码hash
+            var hash = _passwordHasher.HashPassword(user, "zcy123");
+            user.Password = hash;
+            await _userManager.UpdateAsync(user);
         }
     }
 }
