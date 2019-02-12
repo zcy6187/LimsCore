@@ -31,6 +31,28 @@ namespace LIMS.Assay.Base
             return _orgRep.GetAll().Where(x => x.Code == inputCode).FirstOrDefault().AliasName;
         }
 
+        // 获取帐套的名称
+        private string GetZtMc(string ztCode)
+        {
+            string str = string.Empty;
+            switch (ztCode)
+            {
+                case "00010001":
+                    str = "锌业";
+                    break;
+                case "00010002":
+                    str = "股份";
+                    break;
+                case "00010003":
+                    str = "玉川";
+                    break;
+                default:
+                    str = "未知";
+                    break;
+            }
+            return str;
+        }
+
         public string Add(CreateAssayUserDto input)
         {
             string orgCode = "00010002";
@@ -41,7 +63,7 @@ namespace LIMS.Assay.Base
             if (userZt != null)
             {
                 orgCode = userZt.ZtCode;
-                orgName = userZt.ZtCode;
+                orgName = GetZtMc(orgCode);
             }
 
             int itemCount = _repository.GetAll().Where(x => x.UserName == input.UserName && !x.IsDeleted && x.OrgCode == orgCode).Count();
@@ -93,7 +115,7 @@ namespace LIMS.Assay.Base
         public List<Dtos.HtmlSelectDto> GetHtmlSelectAssayUsers()
         {
             long loginId = AbpSession.UserId ?? 0;
-            var userZtCode = this._userZtRep.GetAll().Where(x => x.UserId == loginId).Select(x=>x.ZtCode);
+            var userZtCode = this._userZtRep.GetAll().Where(x => x.UserId == loginId).Select(x=>x.ZtCode).ToArray();
 
             var list = _repository.GetAll().Where(x => !x.IsDeleted && userZtCode.Contains(x.OrgCode)).Select(x => new Dtos.HtmlSelectDto()
             {
@@ -106,11 +128,14 @@ namespace LIMS.Assay.Base
 
         public List<EditAssayUserDto> GetAssayOpers(string searchTxt)
         {
-            var rep = _repository.GetAll().Where(x => !x.IsDeleted).ToList();
+            
+            long loginId = AbpSession.UserId ?? 0;
+            var userZt = this._userZtRep.GetAll().Where(x => x.UserId == loginId).Select(x=>x.ZtCode).ToArray();
+            var rep = _repository.GetAll().Where(x => !x.IsDeleted && userZt.Contains(x.OrgCode)).ToList();
             if (!string.IsNullOrEmpty(searchTxt))
             {
-                rep = _repository.GetAll()
-                    .Where(x => !x.IsDeleted && x.UserName.Contains(searchTxt)).ToList();
+                rep = rep
+                    .Where(x => x.UserName.Contains(searchTxt)).ToList();
             }
             List<EditAssayUserDto> repList = rep.MapTo<List<EditAssayUserDto>>();
 

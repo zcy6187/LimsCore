@@ -19,6 +19,7 @@ namespace LIMS.Assay.Data
         private IRepository<TypeIn, int> _typeInRepository;
         private IRepository<UserTpl, int> _userTplRepository;
         private IRepository<UserTplSpecimens,int> _userTplSpecimenRepository;
+        private IRepository<Attendance, int> _attendanceRepository;
 
         public Assay_DataSearch(IRepository<Template, int> tplRepostitory,
             IRepository<TplSpecimen, int> tplSpecRepostitory,
@@ -26,7 +27,8 @@ namespace LIMS.Assay.Data
             IRepository<TypeInItem, int> typeInItemRepository,
             IRepository<TypeIn, int> typeInRepository,
             IRepository<UserTpl,int> userTplRepository,
-            IRepository<UserTplSpecimens, int> userTplSpecimenRepository
+            IRepository<UserTplSpecimens, int> userTplSpecimenRepository,
+            IRepository<Attendance, int> attendanceRepository
             )
         {
             this._tplRepostitory = tplRepostitory;
@@ -37,6 +39,7 @@ namespace LIMS.Assay.Data
             this._typeInRepository = typeInRepository;
             this._userTplRepository = userTplRepository;
             this._userTplSpecimenRepository = userTplSpecimenRepository;
+            this._attendanceRepository = attendanceRepository;
         }
 
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCode(string input)
@@ -399,6 +402,12 @@ namespace LIMS.Assay.Data
             //获取样品
             var specSchemaInfoList = this._tplEleRepostitory.GetAll().Where(x => specId.Contains(x.TplSpecId) && x.IsDeleted == false).ToList();
 
+            //获取所有的签到信息(签到id不为空)
+            var signIdArray = typeInList.Where(x=>!string.IsNullOrEmpty(x.SignId)).Select(x => x.SignId).ToArray();
+            var signIdIntArray = Array.ConvertAll<string, int>(signIdArray, x => int.Parse(x));
+            var attendanceList = this._attendanceRepository.GetAll().Where(x => signIdIntArray.Contains(x.Id)).ToList();
+
+
             List<MultiTableDataInfoDto> tableInfoList = new List<MultiTableDataInfoDto>();
 
             foreach (var item in specId)
@@ -420,8 +429,36 @@ namespace LIMS.Assay.Data
                         var tempTypeInItemList = typeInItemList.Where(x => x.TypeInId == tItem.Id).ToList();
                         if (tempTypeInItemList.Count() > 0)
                         {
+                            Attendance tempAttendance = null;
+                            if (!string.IsNullOrEmpty(tItem.SignId))
+                            {
+                                var tempSignId=int.Parse(tItem.SignId);
+                                tempAttendance = attendanceList.Where(x => x.Id== tempSignId).FirstOrDefault();
+                            }
+                            // 签到时间
                             tempEleList.Add(tItem.SignTm.ToString("yyyy-MM-dd HH:mm"));
+                            // 采样时间
                             tempEleList.Add(tItem.SamplingTm.ToString("yyyy-MM-dd HH:mm"));
+                            // 其它信息
+                            if (tempAttendance != null)
+                            {
+                                //班次
+                                tempEleList.Add(tempAttendance.Man_Banci);
+                                //炉次
+                                tempEleList.Add(tempAttendance.Man_Luci);
+                                // 自定义编号
+                                tempEleList.Add(tempAttendance.SelfCode);
+                                // 备注
+                                tempEleList.Add(tempAttendance.Description);
+                            }
+                            else
+                            {
+                                tempEleList.Add(string.Empty);
+                                tempEleList.Add(string.Empty);
+                                tempEleList.Add(string.Empty);
+                                tempEleList.Add(string.Empty);
+                            }
+
                             foreach (var ele in eles)
                             {
                                 var tempEle = tempTypeInItemList.FirstOrDefault(x => x.ElementId == ele.Id);

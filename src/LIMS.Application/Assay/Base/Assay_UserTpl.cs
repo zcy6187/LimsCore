@@ -125,14 +125,28 @@ namespace LIMS.Assay.Base
         public Task AddUserTpl(CreateUserTplDto input)
         {
             var addUserTpl = input.MapTo<UserTpl>();
-            UpdateUserTplSpecimen(input.specimens,input.UserId);
-            return _utplRepository.InsertAsync(addUserTpl);
+            var editItem=_utplRepository.GetAll().Where(x => x.UserId == input.UserId).FirstOrDefault();
+            // 找到即更新
+            if (editItem!=null)
+            {
+                editItem.TplIds=input.TplIds;
+                // 插入样品权限
+                UpdateUserTplSpecimen(input.specimens, input.UserId);
+                return _utplRepository.UpdateAsync(editItem);
+            }
+            else
+            {
+                // 插入样品权限
+                UpdateUserTplSpecimen(input.specimens, input.UserId);
+                return _utplRepository.InsertAsync(addUserTpl);
+            }
 
         }
         public Task EditUserTpl(EditVUserTplDto input)
         {
             var editItem = _utplRepository.Single(x => x.Id == input.UserTplId);
             editItem.TplIds = input.TplIds;
+            // 插入样品权限
             UpdateUserTplSpecimen(input.SpecimenList,input.Id);
             return _utplRepository.UpdateAsync(editItem);
         }

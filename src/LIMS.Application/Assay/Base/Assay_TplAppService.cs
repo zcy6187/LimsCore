@@ -199,7 +199,7 @@ namespace LIMS.Assay.Base
         // 获取所有模板（按组织机构代码）
         public List<EditTplDto> GetTplsByOrgCode(string inputCode)
         {
-            var itemList = _tplRepository.GetAll().Where(x => !x.IsDeleted && x.OrgCode.Contains(inputCode)).OrderByDescending(x => x.Id).ToList();
+            var itemList = _tplRepository.GetAll().Where(x => !x.IsDeleted && x.OrgCode.StartsWith(inputCode)).OrderByDescending(x => x.Id).ToList();
             List<EditTplDto> dtoList = itemList.MapTo<List<EditTplDto>>();
 
             return dtoList;
