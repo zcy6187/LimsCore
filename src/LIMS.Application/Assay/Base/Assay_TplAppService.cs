@@ -127,7 +127,8 @@ namespace LIMS.Assay.Base
                 return "该机构下，此名称已存在!";
             }
 
-            var editItem = input.MapTo<Template>();
+            var editItem = this._tplRepository.Single(x => x.Id == input.Id);
+            editItem.TplName = input.TplName;
             editItem.LastModifyTime = DateTime.Now;
             editItem.CreatorId = Convert.ToInt32(AbpSession.UserId);
 
@@ -144,8 +145,11 @@ namespace LIMS.Assay.Base
             {
                 return "该样品下，此元素已存在!";
             }
-
-            var editItem = input.MapTo<TplElement>();
+            var editItem=this._tplElementRepository.Single(x => x.Id == input.Id);
+            editItem.UnitId = input.UnitId;
+            editItem.UnitName = input.UnitName;
+            editItem.ElementName = input.ElementName;
+            editItem.ElementId = input.ElementId;
             editItem.LastModifyTime = DateTime.Now;
             editItem.CreatorId = Convert.ToInt32(AbpSession.UserId);
 
@@ -164,7 +168,9 @@ namespace LIMS.Assay.Base
                 return "该模板下，此样品已存在!";
             }
 
-            var editItem = input.MapTo<TplSpecimen>();
+            var editItem = this._tplSpecimenRepository.Single(x=>x.Id==input.Id);
+            editItem.SpecId = input.SpecId;
+            editItem.SpecName = input.SpecName;
             editItem.LastModifyTime = DateTime.Now;
             editItem.CreatorId = Convert.ToInt32(AbpSession.UserId);
 

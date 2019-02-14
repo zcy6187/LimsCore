@@ -18,6 +18,7 @@ namespace LIMS.Assay.Base.Dto
         public int UnitId { get; set; }
         public string UnitName { get; set; }
         public int TplSpecId { get; set; }
+        public int OrderNo { get; set; }
 
         public float MaxNum { get; set; }
         public float MinNum { get; set; }

@@ -15,5 +15,6 @@ namespace LIMS.Assay.Base.Dto
         public string SpecName { get; set; }
         public int UnitId { get; set; }
         public string UnitName { get; set; }
+        public int OrderNum { get; set; }
     }
 }
