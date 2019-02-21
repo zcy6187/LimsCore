@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Abp.Domain.Repositories;
 using LIMS.Assay.Data.Dto;
 using LIMS.Dtos;
 using LIMS.SysManager;
+using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json.Linq;
 
 namespace LIMS.Assay.Data
@@ -521,6 +523,38 @@ namespace LIMS.Assay.Data
             }
 
             return tableInfoList;
+        }
+
+        // 下载excel(1个sheet)
+        public string GetExcelNameBySpecIdSinleSheet(int input, int[] specId, DateTime begin, DateTime endTime)
+        {
+            List<MultiTableDataInfoDto> excelData = GetMultiTableDataInfoBySpecId(input, specId, begin, endTime);
+            ExcelOper exceler = new ExcelOper();
+            string fileName=exceler.CreateExcelAndSaveLocalSingleSheet(excelData);
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return "-1";
+            }
+            else
+            {
+                return fileName;
+            }
+        }
+
+        // 下载excel(多个sheet)
+        public string GetExcelNameBySpecIdMultiSheet(int input, int[] specId, DateTime begin, DateTime endTime)
+        {
+            List<MultiTableDataInfoDto> excelData = GetMultiTableDataInfoBySpecId(input, specId, begin, endTime);
+            ExcelOper exceler = new ExcelOper();
+            string fileName = exceler.CreateExcelAndSaveLocalMultiSheet(excelData);
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return "-1";
+            }
+            else
+            {
+                return fileName;
+            }
         }
     }
 }

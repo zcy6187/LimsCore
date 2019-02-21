@@ -2,6 +2,7 @@
 using LIMS.Dtos;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace LIMS.Assay.Data
@@ -17,5 +18,8 @@ namespace LIMS.Assay.Data
 
         List<Dtos.HtmlSelectDto> GetUserTemplatesByUserId();
         List<MultiTableDataInfoDto> GetMultiTableDataInfoBySpecId(int input, int[] specId, DateTime begin, DateTime endTime);
+
+        string GetExcelNameBySpecIdSinleSheet(int input, int[] specId, DateTime begin, DateTime endTime);
+        string GetExcelNameBySpecIdMultiSheet(int input, int[] specId, DateTime begin, DateTime endTime);
     }
 }
