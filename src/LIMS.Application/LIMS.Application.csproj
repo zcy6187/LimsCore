@@ -12,8 +12,14 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NPOI" Version="2.4.1" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.Extensions.ToSql" Version="2.0.0-rtm-10002" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LIMS.Core\LIMS.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.AspNetCore.Mvc.Core">
+      <HintPath>C:\Program Files\dotnet\sdk\NuGetFallbackFolder\microsoft.aspnetcore.mvc.core\2.1.1\lib\netstandard2.0\Microsoft.AspNetCore.Mvc.Core.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

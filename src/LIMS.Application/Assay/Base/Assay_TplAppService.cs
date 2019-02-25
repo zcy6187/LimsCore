@@ -127,10 +127,13 @@ namespace LIMS.Assay.Base
                 return "该机构下，此名称已存在!";
             }
 
+            string orgName = _orgRepository.Single(x => x.Code == input.OrgCode).AliasName;
             var editItem = this._tplRepository.Single(x => x.Id == input.Id);
             editItem.TplName = input.TplName;
             editItem.LastModifyTime = DateTime.Now;
             editItem.CreatorId = Convert.ToInt32(AbpSession.UserId);
+            editItem.OrgCode = input.OrgCode;
+            editItem.OrgName = orgName;
 
             _tplRepository.UpdateAsync(editItem);
 

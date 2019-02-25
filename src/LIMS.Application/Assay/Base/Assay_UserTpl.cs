@@ -160,14 +160,15 @@ namespace LIMS.Assay.Base
         // 更新用户模板样品
         private void UpdateUserTplSpecimen(List<TplSpecimenDto> specimenList,long userId)
         {
+            // 删除原有的样品信息
+            var userRep = this._uTplSpecimenRepository.GetAll().Where(x => x.UserId == userId);
+            foreach (var item in userRep)
+            {
+                this._uTplSpecimenRepository.Delete(item);
+            }
+            // 如果specimenList.Count()为空，则证明没有样品权限，不处理即可
             if (specimenList.Count() > 0)
             {
-                // 删除原有的
-                var userRep = this._uTplSpecimenRepository.GetAll().Where(x => x.UserId == userId);
-                foreach (var item in userRep)
-                {
-                    this._uTplSpecimenRepository.Delete(item);
-                }
                 // 添加新的
                 foreach (var item in specimenList)
                 {
