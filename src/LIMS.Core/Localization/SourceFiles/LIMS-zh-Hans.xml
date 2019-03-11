@@ -17,7 +17,7 @@
     
     <text name="Pages.AssayInput" value="化验单录入" />
     <text name="Pages.AssayInput.DataInput" value="数据录入" />
-    <text name="Pages.Assay.SearchInput" value="签到录入" />
+    <text name="Pages.AssayInput.SearchInput" value="签到录入" />
     
     <text name="Pages.AssaySearch" value="化验查询" />
     <text name="Pages.AssaySearch.SimpleSearch" value="横列查询" />
@@ -29,6 +29,9 @@
     <text name="Pages.System.Role" value="角色管理" />
     <text name="Pages.System.Organization" value="组织管理" />
     <text name="Pages.System.ZtCode" value="帐套管理" />
+
+    <text name="Pages.Statistic" value="统计报表" />
+    <text name="Pages.Statistic.Company" value="组织费用统计" />
 
     <!--租户有关的内容-->
     <text name="TenantNameCanNotBeEmpty" value="租户名不能为空" />

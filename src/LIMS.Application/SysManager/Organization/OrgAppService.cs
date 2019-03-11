@@ -44,7 +44,7 @@ namespace LIMS.SysManager.Organization
                 id = rootOrg.Id.ToString(),
                 expanded = true,
                 key = rootOrg.Code,
-                title = rootOrg.OrgName,
+                title = rootOrg.AliasName,
             };
 
             List<OrgTreeNodeDto> orgNodes = GetTreeNodeListByParent(rootOrg, orgInfoList);
@@ -74,7 +74,7 @@ namespace LIMS.SysManager.Organization
                 {
                     id = item.Id.ToString(),
                     key = item.Code,
-                    title = item.OrgName,
+                    title = item.AliasName,
                 };
 
                 List<OrgTreeNodeDto> childNodeList = GetTreeNodeListByParent(item, orgList);
@@ -108,7 +108,7 @@ namespace LIMS.SysManager.Organization
                 id = rootOrg.Id.ToString(),
                 expanded = true,
                 key = rootOrg.Code,
-                title = rootOrg.OrgName,
+                title = rootOrg.AliasName,
             };
 
             List<OrgTreeNodeDto> orgNodes = GetTreeNodeListByParent(rootOrg, orgInfoList);
@@ -139,7 +139,7 @@ namespace LIMS.SysManager.Organization
                     id = rootOrg.Id.ToString(),
                     expanded = true,
                     key = rootOrg.Code,
-                    title = rootOrg.OrgName,
+                    title = rootOrg.AliasName,
                 };
 
                 List<OrgTreeNodeDto> orgNodes = GetTreeNodeListByParent(rootOrg, orgInfoList);

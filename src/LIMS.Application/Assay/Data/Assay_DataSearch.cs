@@ -392,9 +392,15 @@ namespace LIMS.Assay.Data
             begin = DateTime.Parse(begin.ToLocalTime().ToString("yyyy-MM-dd 00:00:00"));
             endTime = DateTime.Parse(endTime.ToLocalTime().ToString("yyyy-MM-dd 23:59:59"));
 
-            // 所有样品数据
-            var typeInList = _typeInRepository.GetAll()
-                .Where(x => x.TplId == input && specId.Contains(x.SpecId) && x.SignTm >= begin && x.SignTm <= endTime)
+            var typeInQuery = _typeInRepository.GetAll()
+                .Where(x => x.TplId == input && specId.Contains(x.SpecId) && x.SignTm >= begin && x.SignTm <= endTime);
+            if (specId.Contains(-1))
+            {
+                typeInQuery= _typeInRepository.GetAll()
+                .Where(x => x.TplId == input && x.SignTm >= begin && x.SignTm <= endTime);
+            }
+            
+            var typeInList = typeInQuery
                 .OrderByDescending(x => x.SignTm)
                 .ToList();
             // 所有样品元素数据
@@ -402,7 +408,8 @@ namespace LIMS.Assay.Data
             var typeInItemList = _typeInItemRepository.GetAll()
                 .Where(x => typeInIdArray.Contains(x.TypeInId)).ToList();
             //获取样品
-            var specSchemaInfoList = this._tplEleRepostitory.GetAll().Where(x => specId.Contains(x.TplSpecId) && x.IsDeleted == false).ToList();
+            var specList = typeInList.Select(x => x.SpecId).Distinct().ToList();
+            var specSchemaInfoList = this._tplEleRepostitory.GetAll().Where(x => specList.Contains(x.TplSpecId)).ToList();
 
             //获取所有的签到信息(签到id不为空)
             var signIdArray = typeInList.Where(x => !string.IsNullOrEmpty(x.SignId)).Select(x => x.SignId).ToArray();
@@ -412,10 +419,14 @@ namespace LIMS.Assay.Data
 
             List<MultiTableDataInfoDto> tableInfoList = new List<MultiTableDataInfoDto>();
 
-            foreach (var item in specId)
+            foreach (var item in specList)
             {
                 // 获取该样品的所有元素
                 var eles = specSchemaInfoList.Where(x => x.TplSpecId == item).OrderBy(x => x.OrderNo).ToList();
+                if (eles.Count == 0)
+                {
+                    continue;
+                }
                 var eleTableHeadData = eles.Select(x => string.Format("{0}({1})", x.ElementName, x.UnitName)).ToList();
                 string title = eles.First().SpecName;
                 // 所有该样品数据

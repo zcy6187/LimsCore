@@ -84,7 +84,8 @@ namespace LIMS.Assay.Data
                         Flag = GetFlagName(item.Flag),
                         selfCode=item.selfCode,
                         description=item.description,
-                        scanId=item.scanId
+                        scanId=item.scanId,
+                        elementIds=item.elementIds
                     };
                     retList.Add(temp);
                 }
@@ -100,7 +101,7 @@ namespace LIMS.Assay.Data
         public PagedResultDto<AttendanceDto> GetAttendancesBySelfCode(PagedResultRequestDto pageQueryDto,DateTime? beginTime,DateTime? endTime,string selfCode,int flag)
         {
             // 基本查询
-            var query = _repository.GetAll().Where(x => !x.IsDeleted && x.selfCode.StartsWith(selfCode));
+            var query = _repository.GetAll().Where(x => !x.IsDeleted && x.scanId.EndsWith(selfCode));
             if (beginTime != null)
             {
                 beginTime = DateTime.Parse(((DateTime)beginTime).ToString("yyyy-MM-dd 00:00:00"));
@@ -108,7 +109,7 @@ namespace LIMS.Assay.Data
             }
             if (endTime != null)
             {
-                endTime = DateTime.Parse(((DateTime)endTime).ToString("yyyy-MM-dd 00:00:00"));
+                endTime = DateTime.Parse(((DateTime)endTime).ToString("yyyy-MM-dd 23:59:59"));
                 query = query.Where(x => x.signTime <= endTime);
             }
             if (flag < 3)
@@ -135,6 +136,7 @@ namespace LIMS.Assay.Data
                     || x.orgCode.StartsWith(ztCodeList[2]));
                 }
             }
+            string sql = query.DefaultIfEmpty().ToString();
 
             int count = query.Count();
             var retList = new List<AttendanceDto>();

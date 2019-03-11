@@ -32,6 +32,10 @@ namespace LIMS.Assay.Authorization
             pageAssaySearch.CreateChildPermission(AssayAppPermissions.UserMultiTableSearch,L(AssayAppPermissions.UserMultiTableSearch));
             pageAssaySearch.CreateChildPermission(AssayAppPermissions.ZtMultiTableSearch,L(AssayAppPermissions.ZtMultiTableSearch));
 
+            var pageStatistic = context.CreatePermission(AssayAppPermissions.Statistic,
+                L(AssayAppPermissions.Statistic),
+                L(AssayAppPermissions.Statistic));
+            pageStatistic.CreateChildPermission(AssayAppPermissions.Company,L(AssayAppPermissions.Company));
         }
 
         private static ILocalizableString L(string name)

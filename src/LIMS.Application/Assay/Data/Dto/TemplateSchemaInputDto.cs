@@ -30,5 +30,6 @@ namespace LIMS.Assay.Data.Dto
         public string EleName { get; set; }
         public string UnitName { get; set; }
         public string EleValue { get; set; }
+        public bool IsVisible { get; set; }
     }
 }

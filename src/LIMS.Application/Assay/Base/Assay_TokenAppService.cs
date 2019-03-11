@@ -62,7 +62,7 @@ namespace LIMS.Assay.Base
             }
             else
             {
-                tokenList = this._repository.GetAll().Where(x => x.OrgCode.Contains(input.OrgCode)).ToList();
+                tokenList = this._repository.GetAll().Where(x => x.OrgCode.StartsWith(input.OrgCode)).ToList();
             }
             
 

@@ -38,6 +38,6 @@ namespace LIMS.Assay
         public string selfCode { get; set; }
         public string description { get; set; }
         public string scanId { get; set; }
-
+        public string elementIds { get; set; }
     }
 }

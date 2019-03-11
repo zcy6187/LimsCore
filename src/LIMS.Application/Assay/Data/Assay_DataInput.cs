@@ -36,6 +36,23 @@ namespace LIMS.Assay.Data
             this._typeInItemRep = typeInItemRep;
         }
 
+        public TemplateSchemaInputDto GetTemplateSchemaInputDtoBySignId(int signId)
+        {
+            var attendance=_attendanceRep.GetAll().Where(x => x.Id == signId).FirstOrDefault();
+            if (attendance == null)
+            {
+               return null;
+            }
+            else
+            {
+                int tplId = attendance.TplId;
+                int specId = attendance.TplSpecId;
+                int[] specArray = new int[] { specId };
+                return GetTemplateSchemaInputDtoByTplId(tplId,specArray);
+            }
+                
+        }
+
         // 获取输入框架
         public TemplateSchemaInputDto GetTemplateSchemaInputDtoByTplId(int tplId, int[] specId)
         {
@@ -70,6 +87,7 @@ namespace LIMS.Assay.Data
                     tempEleInput.UnitName = ele.UnitName;
                     tempEleInput.EleName = ele.ElementName;
                     tempEleInput.FormName = "ele" + ele.Id.ToString();
+                    tempEleInput.IsVisible = true;
                     tempEleInputList.Add(tempEleInput);
                 }
 
@@ -219,6 +237,9 @@ namespace LIMS.Assay.Data
             }
             else
             {
+                tempTypeIn.SamplingTm =DateTime.Parse($"{tempTypeIn.SamplingDate} {tempTypeIn.SamplingTime}");
+                tempTypeIn.SignTm = DateTime.Now;
+                tempTypeIn.CreateTime = DateTime.Now;
                 tempTypeInId = _typeInRep.InsertAndGetId(tempTypeIn);
             }
              

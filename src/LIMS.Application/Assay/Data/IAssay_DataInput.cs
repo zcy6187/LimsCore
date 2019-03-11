@@ -9,5 +9,6 @@ namespace LIMS.Assay.Data
     {
         TemplateSchemaInputDto GetTemplateSchemaInputDtoByTplId(int tplId, int[] specId);
         Dtos.HtmlDataOperRetDto WriteValueToTable(CreateDataInputDto input);
+        TemplateSchemaInputDto GetTemplateSchemaInputDtoBySignId(int signId);
     }
 }
