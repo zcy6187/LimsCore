@@ -24,6 +24,7 @@ namespace LIMS.Assay.Authorization
                L(AssayAppPermissions.AssayInput));
             pageAssayInput.CreateChildPermission(AssayAppPermissions.DataInput, L(AssayAppPermissions.DataInput));
             pageAssayInput.CreateChildPermission(AssayAppPermissions.SearchInput, L(AssayAppPermissions.SearchInput));
+            pageAssayInput.CreateChildPermission(AssayAppPermissions.XySignDataInput,L(AssayAppPermissions.XySignDataInput));
 
             var pageAssaySearch = context.CreatePermission(AssayAppPermissions.AssaySearch,
                 L(AssayAppPermissions.AssaySearch),
@@ -31,6 +32,7 @@ namespace LIMS.Assay.Authorization
             pageAssaySearch.CreateChildPermission(AssayAppPermissions.SimpleSearch, L(AssayAppPermissions.SimpleSearch));
             pageAssaySearch.CreateChildPermission(AssayAppPermissions.UserMultiTableSearch,L(AssayAppPermissions.UserMultiTableSearch));
             pageAssaySearch.CreateChildPermission(AssayAppPermissions.ZtMultiTableSearch,L(AssayAppPermissions.ZtMultiTableSearch));
+            pageAssaySearch.CreateChildPermission(AssayAppPermissions.UserSingleTableSearch, L(AssayAppPermissions.UserSingleTableSearch));
 
             var pageStatistic = context.CreatePermission(AssayAppPermissions.Statistic,
                 L(AssayAppPermissions.Statistic),

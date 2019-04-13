@@ -18,10 +18,12 @@
     <text name="Pages.AssayInput" value="化验单录入" />
     <text name="Pages.AssayInput.DataInput" value="数据录入" />
     <text name="Pages.AssayInput.SearchInput" value="签到录入" />
-    
+    <text name="Pages.AssayInput.XySignDataInput" value="锌业签到录入" />
+
     <text name="Pages.AssaySearch" value="化验查询" />
     <text name="Pages.AssaySearch.SimpleSearch" value="横列查询" />
-    <text name="Pages.AssaySearch.UserMultiSearch" value="用户多表查询" />
+    <text name="Pages.AssaySearch.UserMultiSearch" value="多表查询" />
+    <text name="Pages.AssaySearch.UserSingleTableSearch" value="单表横列查询" />
     <text name="Pages.AssaySearch.ZtMultiSearch" value="帐套多表查询" />
 
     <text name="Pages.System" value="系统管理" />

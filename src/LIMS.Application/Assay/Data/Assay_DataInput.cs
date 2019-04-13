@@ -38,45 +38,45 @@ namespace LIMS.Assay.Data
 
         public TemplateSchemaInputDto GetTemplateSchemaInputDtoBySignId(int signId)
         {
-            var attendance=_attendanceRep.GetAll().Where(x => x.Id == signId).FirstOrDefault();
+            var attendance = _attendanceRep.GetAll().Where(x => x.Id == signId).FirstOrDefault();
             if (attendance == null)
             {
-               return null;
+                return null;
             }
             else
             {
                 int tplId = attendance.TplId;
                 int specId = attendance.TplSpecId;
                 int[] specArray = new int[] { specId };
-                return GetTemplateSchemaInputDtoByTplId(tplId,specArray);
+                return GetTemplateSchemaInputDtoByTplId(tplId, specArray);
             }
-                
+
         }
 
         // 获取输入框架
         public TemplateSchemaInputDto GetTemplateSchemaInputDtoByTplId(int tplId, int[] specId)
         {
-            var template = _tplRep.GetAll().Where(x => x.IsDeleted == false && x.Id == tplId).Single();
+            var template = _tplRep.GetAll().Where(x => x.Id == tplId).Single();
             List<TplSpecimen> tplSpecimenList = new List<TplSpecimen>();
             if (specId.Count() == 0 || specId.Contains(-1))
             {
-                tplSpecimenList = _tplSpecRep.GetAll().Where(x => x.IsDeleted == false && x.TplId == tplId)
+                tplSpecimenList = _tplSpecRep.GetAll().Where(x => x.TplId == tplId)
                     .OrderBy(x => x.TplId).ThenByDescending(x => x.OrderNum).ToList();
             }
             else
             {
-                tplSpecimenList = _tplSpecRep.GetAll().Where(x => x.IsDeleted == false && specId.Contains(x.Id))
+                tplSpecimenList = _tplSpecRep.GetAll().Where(x => specId.Contains(x.Id))
                      .OrderBy(x => x.TplId).ThenByDescending(x => x.OrderNum).ToList();
             }
             var specIdList = tplSpecimenList.Select(x => x.Id).ToList();
-            List<TplElement> tplEleList = this._tplEleRep.GetAll().Where(x => x.IsDeleted == false && specIdList.Contains(x.TplSpecId))
+            List<TplElement> tplEleList = this._tplEleRep.GetAll().Where(x => specIdList.Contains(x.TplSpecId))
                 .OrderBy(x => x.TplSpecId).ThenBy(x => x.OrderNo).ToList();
 
             List<SpecInputDto> tempSpecInputList = new List<SpecInputDto>();
 
             foreach (var item in tplSpecimenList)
             {
-                var tempEleList = tplEleList.Where(x => x.TplSpecId == item.Id && x.IsDeleted == false).ToList();
+                var tempEleList = tplEleList.Where(x => x.TplSpecId == item.Id).ToList();
                 List<ElementInputDto> tempEleInputList = new List<ElementInputDto>();
                 foreach (var ele in tempEleList)
                 {
@@ -122,13 +122,8 @@ namespace LIMS.Assay.Data
                 };
             }
             int tplId = input.TplId;
-            DateTime samplingDate = input.SamplingDate;
+            DateTime samplingDate = DateTime.Parse(input.SamplingDate);
             string samplingTime = input.SamplingTime;
-            if (input.SignDate != null)
-            {
-                samplingDate = ((DateTime)input.SignDate).ToLocalTime();
-                samplingTime = samplingDate.ToString("HH:mm");
-            }
             List<SpecDataDto> specList = ReadValueFromJsonStr(input.FormValue);
 
             // 遍历，存数据于库
@@ -164,12 +159,9 @@ namespace LIMS.Assay.Data
                 return;
             }
 
-            CreateTypeInDto typeIn = new CreateTypeInDto();
-            typeIn.IsParallel = false;
-            string attendanceEleIds = string.Empty;
             Attendance findAttendance = null;
 
-            // 签到Id和typeIn的Id都为空，则需要去签到表中检测签到Id
+            // 签到Id和typeIn的Id都为空，则需要去签到表中检测签Id
             if (string.IsNullOrEmpty(item.SignId))
             {
                 DateTime beginTime = DateTime.Parse(string.Format("{0} {1}:00", samplingDate.ToString("yyyy-MM-dd"), samplingTime));
@@ -187,64 +179,66 @@ namespace LIMS.Assay.Data
             {
                 findAttendance = _attendanceRep.Single(x => x.Id == int.Parse(item.SignId));
             }
-            typeIn.TplId = tplId;
-            typeIn.SpecId = item.SpecId;
-            typeIn.CreateTime = DateTime.Now;
-            typeIn.CreatorId = (int)AbpSession.UserId;
 
-
-            TypeIn tempTypeIn = null;
-            // 签到日期和时间
-            if (findAttendance != null)
-            {
-                typeIn.SignId = findAttendance.Id.ToString();
-                attendanceEleIds = findAttendance.ElementIds;
-                typeIn.IsParallel = string.IsNullOrEmpty(findAttendance.MainScanId) ? false : true;
-                typeIn.MainId = findAttendance.MainScanId;
-                typeIn.SamplingDate = findAttendance.SamplingDate.ToString("yyyy-MM-dd");
-                typeIn.SamplingTime = findAttendance.SamplingTime;
-                typeIn.SamplingTm = DateTime.Parse(findAttendance.SamplingDate.ToString("yyyy-MM-dd ") + findAttendance.SamplingTime);
-                typeIn.SignTm = findAttendance.SignTime;
-                // 如果签到信息存在，则去TypeIn表中查找是否有录入记录
-                tempTypeIn=_typeInRep.GetAll().Where(x => x.SignId == typeIn.SignId && x.IsDeleted == false).FirstOrDefault();
-            }
-            else
-            {
-                typeIn.SamplingDate = samplingDate.ToString("yyyy-MM-dd");
-                typeIn.SamplingTime = samplingTime;
-            }
-
-            // 获取化验元素信息
+            // 获取化验元素信息 
             eleDataList = eleDataList.OrderBy(x => x.EleId).ToList();
             string elementIds = string.Join(",", eleDataList.Select(x => x.EleId));
             string elementNames = string.Join(",", eleDataList.Select(x => x.EleName));
 
-            typeIn.EleIds = elementIds;
-            typeIn.EleNames = elementNames;
-            typeIn.IsDeleted = false;
-
-
+            // 创建签到数据模型，并填充基础信息
+            CreateTypeInDto typeIn = new CreateTypeInDto();
+            TypeIn tempTypeIn = null;
+            // 记录数据插入的Id
+            int tempTypeInId = -1;
+            // 如果签到信息存在，则去TypeIn表中查找是否有录入记录
+            tempTypeIn = _typeInRep.GetAll().Where(x => x.SignId == typeIn.SignId && x.IsDeleted == false).FirstOrDefault();
+            // 如果typeIn表中没有记录，则根据签到信息回填，或者根据已有信息创建新的TypeIn
             if (tempTypeIn == null)
             {
-                tempTypeIn= typeIn.MapTo<TypeIn>();
-            }
+                typeIn.IsParallel = false; // 平行样
+                string attendanceEleIds = string.Empty;
+                typeIn.TplId = tplId;
+                typeIn.SpecId = item.SpecId;
+                typeIn.CreateTime = DateTime.Now;
+                typeIn.CreatorId = (int)AbpSession.UserId;
+                typeIn.IsDeleted = false;
+                typeIn.EleIds = elementIds;
+                typeIn.EleNames = elementNames;
+                
+                // 如果有签到信息，则将签到信息回填
+                if (findAttendance != null)
+                {
+                    typeIn.SignId = findAttendance.Id.ToString();
+                    attendanceEleIds = findAttendance.ElementIds;
+                    typeIn.IsParallel = string.IsNullOrEmpty(findAttendance.MainScanId) ? false : true;
+                    typeIn.MainId = findAttendance.MainScanId;
+                    typeIn.SamplingDate = findAttendance.SamplingDate.ToString("yyyy-MM-dd");
+                    typeIn.SamplingTime = findAttendance.SamplingTime;
+                    typeIn.SamplingTm = DateTime.Parse(findAttendance.SamplingDate.ToString("yyyy-MM-dd ") + findAttendance.SamplingTime);
+                    typeIn.SignTm = findAttendance.SignTime;
+                }
+                else // 没有签到信息，则根据已有信息补充
+                {
+                    string samplDate = samplingDate.ToString("yyyy-MM-dd");
+                    typeIn.SamplingDate = samplDate;
+                    typeIn.SamplingTime = samplingTime;
 
-            int tempTypeInId = -1;
-            // 签到表中已经存在记录，则更新
-            if (tempTypeIn.Id > 0)
-            {
-                _typeInRep.Update(tempTypeIn);
-            }
-            else
-            {
-                tempTypeIn.SamplingTm =DateTime.Parse($"{tempTypeIn.SamplingDate} {tempTypeIn.SamplingTime}");
-                tempTypeIn.SignTm = DateTime.Now;
-                tempTypeIn.CreateTime = DateTime.Now;
+                    typeIn.SamplingTm = DateTime.Parse($"{samplingDate} {samplingTime}");
+                    typeIn.SignTm = DateTime.Now;
+                    tempTypeIn.CreateTime = DateTime.Now;  
+                }
+                // 插入数据，获取当前插入ID
                 tempTypeInId = _typeInRep.InsertAndGetId(tempTypeIn);
             }
-             
+            else // 只更新元素信息
+            {
+                tempTypeIn.EleIds = elementIds;
+                tempTypeIn.EleNames = elementNames;
+                _typeInRep.Update(tempTypeIn);
+                tempTypeInId = tempTypeIn.Id;
+            }
 
-            // 更新签到表信息
+            // 更新签到表信息(0-未录入，1-部分录入，2-全录入)
             if (findAttendance != null)
             {
                 if (findAttendance.TplElementIds == elementIds)
@@ -259,6 +253,7 @@ namespace LIMS.Assay.Data
                 _attendanceRep.UpdateAsync(findAttendance);
             }
 
+            // 生成TypeInItem信息
             AddElementDataToTable(item, tempTypeInId, tplId);
         }
 

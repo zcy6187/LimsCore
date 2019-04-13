@@ -168,7 +168,8 @@ namespace LIMS.Assay.Data
                         Flag = GetFlagName(item.Flag),
                         selfCode = item.selfCode,
                         description = item.description,
-                        scanId = item.scanId
+                        scanId = item.scanId,
+                        elementIds=item.elementIds
                     };
                     retList.Add(temp);
                 }

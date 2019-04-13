@@ -18,5 +18,6 @@ namespace LIMS.SysManager.Organization
         Task EditOrgInfo(EditOrgDto input);
 
         List<OrgTreeNodeDto> GetOrgTreeByZtCode();
+        List<OrgTreeNodeDto> GetOrgTreeByTplQx(); //根据用户的模板权限，获取其帐套信息
     }
 }

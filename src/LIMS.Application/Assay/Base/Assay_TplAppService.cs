@@ -174,6 +174,8 @@ namespace LIMS.Assay.Base
             var editItem = this._tplSpecimenRepository.Single(x=>x.Id==input.Id);
             editItem.SpecId = input.SpecId;
             editItem.SpecName = input.SpecName;
+            editItem.UnitId = input.UnitId;
+            editItem.UnitName = input.UnitName;
             editItem.LastModifyTime = DateTime.Now;
             editItem.CreatorId = Convert.ToInt32(AbpSession.UserId);
 
@@ -219,7 +221,12 @@ namespace LIMS.Assay.Base
         {
             if (!string.IsNullOrEmpty(input.TplName))
             {
-                var itemList = _tplRepository.GetAll().Where(x => !x.IsDeleted && x.TplName.Contains(input.TplName)).OrderByDescending(x => x.Id).ToList();
+                var query = _tplRepository.GetAll().Where(x => !x.IsDeleted && x.TplName.Contains(input.TplName));
+                if (!string.IsNullOrEmpty(input.OrgCode))
+                {
+                    query=query.Where(x => x.OrgCode.StartsWith(input.OrgCode));
+                }
+                var itemList = query.OrderByDescending(x => x.Id).ToList();
                 List<EditTplDto> dtoList = itemList.MapTo<List<EditTplDto>>();
 
                 return dtoList;

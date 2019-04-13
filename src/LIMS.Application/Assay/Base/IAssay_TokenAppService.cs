@@ -13,7 +13,7 @@ namespace LIMS.Assay.Base
         // 添加令牌
         string AddTplToken(CreateTplToken input);
         // 删除令牌
-        Task DeleteTplToken(EditTplToken input);
+        Task DeleteTplToken(int input);
         // 检测token字符串是否已经存在
         bool CheckTplTokenName(string token);
         // 更新令牌

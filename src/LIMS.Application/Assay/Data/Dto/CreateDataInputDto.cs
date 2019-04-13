@@ -8,7 +8,7 @@ namespace LIMS.Assay.Data.Dto
     public class CreateDataInputDto
     {
         public int TplId { get; set; }
-        public DateTime SamplingDate { get; set; }
+        public string SamplingDate { get; set; }
         public DateTime? SignDate { get; set; }
         public string SamplingTime { get; set; }
         public string FormValue { get; set; }

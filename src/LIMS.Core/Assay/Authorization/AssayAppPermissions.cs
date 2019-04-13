@@ -21,10 +21,12 @@ namespace LIMS.Assay.Authorization
         public const string AssayInput = "Pages.AssayInput";
         public const string DataInput = "Pages.AssayInput.DataInput";
         public const string SearchInput = "Pages.AssayInput.SearchInput";
+        public const string XySignDataInput = "Pages.AssayInput.XySignDataInput";
 
         public const string AssaySearch = "Pages.AssaySearch";
         public const string SimpleSearch = "Pages.AssaySearch.SimpleSearch";
         public const string UserMultiTableSearch = "Pages.AssaySearch.UserMultiSearch";
+        public const string UserSingleTableSearch = "Pages.AssaySearch.UserSingleTableSearch";
         public const string ZtMultiTableSearch = "Pages.AssaySearch.ZtMultiSearch";
 
 

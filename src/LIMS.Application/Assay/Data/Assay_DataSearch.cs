@@ -55,6 +55,28 @@ namespace LIMS.Assay.Data
             return retList;
         }
 
+        public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCodeAndTplQx(string input)
+        {
+            long userId = AbpSession.UserId??0;
+            var tplItem=this._userTplRepository.GetAll().Where(x => x.UserId == userId).FirstOrDefault();
+            var query = _tplRepostitory.GetAll().Where(x => x.OrgCode.StartsWith(input));
+            if (tplItem != null)
+            {
+                string tplStr = tplItem.TplIds;
+                string[] tplStrList = tplStr.Split(',',StringSplitOptions.RemoveEmptyEntries);
+                int[] tplIntList = Array.ConvertAll<string, int>(tplStrList,s=>int.Parse(s));
+                query.Where(x => tplIntList.Contains(x.Id));
+            }
+
+            var retList = query.Select(x => new Dtos.HtmlSelectDto()
+            {
+                Key = x.Id.ToString(),
+                Value = x.TplName.ToString()
+            }).ToList();
+
+            return retList;
+        }
+
         public TemplateInfoDto GetTemplateInfoByTemplateId(int input)
         {
             var item = _tplRepostitory.Single(x => x.Id == input);
@@ -285,8 +307,14 @@ namespace LIMS.Assay.Data
             begin = begin.ToLocalTime();
             endTime = endTime.ToLocalTime();
 
-            var typeInList = _typeInRepository.GetAll()
-                .Where(x => x.TplId == input && specId.Contains(x.SpecId) && string.Compare(x.SamplingDate, begin.ToString("yyyy-MM-dd")) >= 0 && string.Compare(x.SamplingTime, endTime.ToString("yyyy-MM-dd")) <= 0)
+            var query = _typeInRepository.GetAll()
+                .Where(x => x.TplId == input && string.Compare(x.SamplingDate, begin.ToString("yyyy-MM-dd")) >= 0 && string.Compare(x.SamplingTime, endTime.ToString("yyyy-MM-dd")) <= 0);
+            if (!specId.Contains(-1))
+            {
+                query = query.Where(x => specId.Contains(x.SpecId));
+            }
+            
+            var typeInList = query
                 .OrderByDescending(x => x.SamplingDate)
                 .ToList();
 
@@ -316,6 +344,12 @@ namespace LIMS.Assay.Data
                 }
             }
 
+            if (strList.Count > 1)
+            {
+                List<string> statisticRow = GetStatisticRow(strList);
+                strList.Add(statisticRow);
+            }
+
             return
                 new DataSearchTableDto()
                 {
@@ -332,8 +366,8 @@ namespace LIMS.Assay.Data
             var tempTypeItemList = typeItemList.Where(x => tempTypeInArray.Contains(x.TypeInId)).ToList();
             int eleIndex = 0;
             List<string> strList = new List<string>();
-            strList.Add(samplingDate);
-            strList.Add(samplingTime);
+            strList.Add($"{samplingDate} {samplingTime}");
+            //strList.Add(samplingTime);
             foreach (var specItem in schema.Specimens)
             {
                 for (int i = 0; i < specItem.Count; i++)
@@ -352,6 +386,51 @@ namespace LIMS.Assay.Data
                 eleIndex += specItem.Count;
             }
             return strList;
+        }
+
+        public List<string> GetStatisticRow(List<List<string>> dataList)
+        {
+            // 记录总数
+            List<double> dList = new List<double>();
+            // 记录行数
+            List<int> numList = new List<int>();
+            for (int i = 1; i < dataList[0].Count; i++)
+            {
+                dList.Add(0);
+                numList.Add(0);
+            }
+            // 遍历，如果能转换为double，则加入到numList，汇总数记入dList
+            foreach (var dataItem in dataList)
+            {
+                for (int i=1;i<dataItem.Count;i++)
+                {
+                    string item=dataItem[i];
+                    double tempDd = 0;
+                    if (double.TryParse(item, out tempDd))
+                    {
+                        dList[i - 1] = dList[i - 1] + tempDd;
+                        numList[i - 1] = numList[i - 1] + 1;
+                    }
+                    
+                }
+            }
+            // 行数>0，则计算平均值
+            List<string> retList = new List<string>();
+            retList.Add("平均值");
+            // retList.Add(string.Empty);
+            for (int i = 0; i < numList.Count; i++)
+            {
+                if (numList[i] > 0)
+                {
+                    string temp = Math.Round(dList[i] / numList[i], 5).ToString();
+                    retList.Add(temp);
+                }
+                else
+                {
+                    retList.Add("0");
+                }
+            }
+            return retList;
         }
 
         // 获取用户的所有模板

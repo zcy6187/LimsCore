@@ -10,6 +10,7 @@ namespace LIMS.Assay.Data
     public interface IAssay_DataSearch
     {
         List<Dtos.HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCode(string input);
+        List<Dtos.HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCodeAndTplQx(string input);
         TemplateInfoDto GetTemplateInfoByTemplateId(int input);
         TemplateInfoDto GetTemplateInfoByTemplateIdAndSpecId(int input,int[] specId);
         List<Dtos.HtmlSelectDto> GetSpecimenHtmlSelectByTemplateId(int input,bool flag);

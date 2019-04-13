@@ -46,9 +46,9 @@ namespace LIMS.Assay.Base
             return true;
         }
 
-        public Task DeleteTplToken(EditTplToken input)
+        public Task DeleteTplToken(int input)
         {
-            Token tt=this._repository.Single(x=>x.Id==input.Id);
+            Token tt=this._repository.Single(x=>x.Id==input);
             tt.IsDeleted = true;
             return this._repository.UpdateAsync(tt);
         }

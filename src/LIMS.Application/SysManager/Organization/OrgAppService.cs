@@ -13,13 +13,20 @@ namespace LIMS.SysManager.Organization
     {
         private readonly IRepository<OrgInfo, int> _repository;
         private readonly IRepository<UserZt, int> _userZtRepository;
+        private readonly IRepository<Assay.UserTpl, int> _userTplRepository;
+        private readonly IRepository<Assay.Template, int> _tplRepository;
 
         public OrgAppService(
             IRepository<OrgInfo, int> repository,
-            IRepository<UserZt, int> userZtRepository)
+            IRepository<UserZt, int> userZtRepository,
+            IRepository<Assay.UserTpl, int> userTplRepository,
+            IRepository<Assay.Template, int> tplRepository
+            )
         {
             _repository = repository;
             this._userZtRepository = userZtRepository;
+            this._userTplRepository = userTplRepository;
+            this._tplRepository = tplRepository;
         }
 
         
@@ -148,6 +155,51 @@ namespace LIMS.SysManager.Organization
             }
             return treeNodes;
         }
+
+        #region  根据化验模板，生成组织机构信息
+        // 根据用户的化验模板权限，生成其组织机构信息
+        public List<OrgTreeNodeDto> GetOrgTreeByTplQx()
+        {
+            long uid=AbpSession.UserId??0;
+            var tmpUserTpl=this._userTplRepository.GetAll().Where(x => x.UserId == uid).FirstOrDefault();
+            List<OrgTreeNodeDto> treeNodes = new List<OrgTreeNodeDto>();
+            if (tmpUserTpl != null)
+            {
+                string tpls=tmpUserTpl.TplIds;
+                string[] tplArray = tpls.Split(",", StringSplitOptions.RemoveEmptyEntries);
+                int[] tplIntArray = Array.ConvertAll<string, int>(tplArray, s => int.Parse(s));
+                // 获取所有的组织机构 
+                var orgCodeList=this._tplRepository.GetAll().Where(x=>tplIntArray.Contains(x.Id)).Select(x=>x.OrgCode).ToList();
+                var orgList = this._repository.GetAll().Where(x => orgCodeList.Contains(x.Code)).ToList();
+                treeNodes = GetOrgTreeByOrgList(orgList);
+                
+            }
+            return treeNodes;
+        }
+
+        private List<OrgTreeNodeDto> GetOrgTreeByOrgList(List<OrgInfo> orgList)
+        {
+            var rootLayer=orgList.Min(x=>x.Layer);
+
+            var rootOrg=orgList.Where(x => x.Layer == rootLayer).OrderBy(x=>x.Code).ToList();
+            List<OrgTreeNodeDto> treeNodes = new List<OrgTreeNodeDto>();
+            foreach (var item in rootOrg)
+            {
+                OrgTreeNodeDto rootNode = new OrgTreeNodeDto()
+                {
+                    id = item.Id.ToString(),
+                    expanded = true,
+                    key = item.Code,
+                    title = item.AliasName,
+                };
+                List<OrgTreeNodeDto> orgNodes = GetTreeNodeListByParent(item, orgList);
+                rootNode.children = orgNodes;
+                treeNodes.Add(rootNode);
+            }
+            return treeNodes;
+        }
+
+        #endregion
 
         // 获取单个组织结构信息
         public EditOrgDto GetSingleOrgInfo(int inputId)
