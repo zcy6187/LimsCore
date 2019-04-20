@@ -22,5 +22,7 @@ namespace LIMS.Assay.Data
 
         string GetExcelNameBySpecIdSinleSheet(int input, int[] specId, DateTime begin, DateTime endTime);
         string GetExcelNameBySpecIdMultiSheet(int input, int[] specId, DateTime begin, DateTime endTime);
+
+        SelfSearchTableDto GetDataInfoBySelfCode(int selfTplId, DateTime begin, DateTime endTime);
     }
 }

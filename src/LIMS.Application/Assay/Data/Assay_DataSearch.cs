@@ -22,6 +22,7 @@ namespace LIMS.Assay.Data
         private IRepository<UserTpl, int> _userTplRepository;
         private IRepository<UserTplSpecimens, int> _userTplSpecimenRepository;
         private IRepository<Attendance, int> _attendanceRepository;
+        private IRepository<SelfTpl, int> _selfTplRepository;
 
         public Assay_DataSearch(IRepository<Template, int> tplRepostitory,
             IRepository<TplSpecimen, int> tplSpecRepostitory,
@@ -30,7 +31,8 @@ namespace LIMS.Assay.Data
             IRepository<TypeIn, int> typeInRepository,
             IRepository<UserTpl, int> userTplRepository,
             IRepository<UserTplSpecimens, int> userTplSpecimenRepository,
-            IRepository<Attendance, int> attendanceRepository
+            IRepository<Attendance, int> attendanceRepository,
+            IRepository<SelfTpl, int> selfTplRepository
             )
         {
             this._tplRepostitory = tplRepostitory;
@@ -42,6 +44,7 @@ namespace LIMS.Assay.Data
             this._userTplRepository = userTplRepository;
             this._userTplSpecimenRepository = userTplSpecimenRepository;
             this._attendanceRepository = attendanceRepository;
+            this._selfTplRepository = selfTplRepository;
         }
 
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCode(string input)
@@ -57,14 +60,14 @@ namespace LIMS.Assay.Data
 
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCodeAndTplQx(string input)
         {
-            long userId = AbpSession.UserId??0;
-            var tplItem=this._userTplRepository.GetAll().Where(x => x.UserId == userId).FirstOrDefault();
+            long userId = AbpSession.UserId ?? 0;
+            var tplItem = this._userTplRepository.GetAll().Where(x => x.UserId == userId).FirstOrDefault();
             var query = _tplRepostitory.GetAll().Where(x => x.OrgCode.StartsWith(input));
             if (tplItem != null)
             {
                 string tplStr = tplItem.TplIds;
-                string[] tplStrList = tplStr.Split(',',StringSplitOptions.RemoveEmptyEntries);
-                int[] tplIntList = Array.ConvertAll<string, int>(tplStrList,s=>int.Parse(s));
+                string[] tplStrList = tplStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                int[] tplIntList = Array.ConvertAll<string, int>(tplStrList, s => int.Parse(s));
                 query.Where(x => tplIntList.Contains(x.Id));
             }
 
@@ -301,6 +304,166 @@ namespace LIMS.Assay.Data
             return int.MaxValue;
         }
 
+        #region
+
+        // 自定义模板拼接查询
+        public SelfSearchTableDto GetDataInfoBySelfCode(int selfTplId, DateTime begin, DateTime endTime)
+        {
+            begin = begin.ToLocalTime();
+            endTime = endTime.ToLocalTime();
+
+            var selfTplItem = this._selfTplRepository.GetAll().Single(x => x.Id == selfTplId);
+            string tplIds = selfTplItem.tplIds;
+            string specIds = selfTplItem.tplSpecIds;
+            string[] tplStrArray=tplIds.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            int[] tplIntArray = Array.ConvertAll<string,int>(tplStrArray, s => { return int.Parse(s); });
+            string[] specStrArray = specIds.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            int[] specIntArray = Array.ConvertAll<string, int>(specStrArray, s => { return int.Parse(s); });
+
+            var typeInList = _typeInRepository.GetAll()
+                .Where(x => specIntArray.Contains(x.SpecId) && string.Compare(x.SamplingDate, begin.ToString("yyyy-MM-dd")) >= 0 && string.Compare(x.SamplingTime, endTime.ToString("yyyy-MM-dd")) <= 0)
+                .OrderByDescending(x => x.SamplingDate)
+                .ToList();
+
+            // 获取数据架构
+            List<TemplateInfoDto> schemaInfo = new List<TemplateInfoDto>();
+            foreach (var tplId in tplIntArray)
+            {
+                var tmpTemplate = GetSingleTemplateSchema(tplId,specIntArray);
+                schemaInfo.Add(tmpTemplate);
+            }
+
+            List<List<string>> strList = new List<List<string>>();
+            // 拼装数据
+            if (typeInList.Count() > 0)
+            {
+                // 获取所有的typeInId
+                var idArray = typeInList.Select(x => x.Id);
+
+                // 按采样时间和采样日期分组
+                var typeGrpList = typeInList.GroupBy(x => new { x.SamplingDate, x.SamplingTime })
+                .ToList();
+
+                // 根据typeInId将typeInItem的数据全部查出
+                var typeItemList = _typeInItemRepository.GetAll()
+                    .Where(x => !x.IsDeleted && idArray.Contains(x.TypeInId))
+                    .ToList();
+
+                // 分组整理数据
+                foreach (var item in typeGrpList)
+                {
+                    var tempTypeIn = typeInList.Where(x => x.SamplingDate == item.Key.SamplingDate && x.SamplingTime == item.Key.SamplingTime).ToList();
+                    if (tempTypeIn.Count() > 0)
+                    {
+                        List<string> tempRow = GetSingleRowData(tempTypeIn, typeItemList, schemaInfo, item.Key.SamplingDate, item.Key.SamplingTime);
+                        strList.Add(tempRow);
+                    }
+                }
+            }
+
+            if (strList.Count > 1)
+            {
+                List<string> statisticRow = GetStatisticRow(strList);
+                strList.Add(statisticRow);
+            }
+
+            return
+                new SelfSearchTableDto()
+                {
+                    TableHead = schemaInfo,
+                    TableData = strList
+                };
+
+        }
+
+        private TemplateInfoDto GetSingleTemplateSchema(int tplId, int[] specIds)
+        {
+            var item = _tplRepostitory.Single(x=>x.Id==tplId);
+            if (item != null)
+            {
+                BaseInfoDto tplBaseInfo = new BaseInfoDto()
+                {
+                    Id = item.Id,
+                    Name = item.TplName,
+                    Count = 1
+                };
+                List<TplSpecimen> specList = new List<TplSpecimen>();
+                specList = _tplSpecRepostitory.GetAll().Where(x => x.TplId == item.Id && specIds.Contains(x.Id) && x.IsDeleted == false).OrderBy(x => x.OrderNum).ToList();
+
+                var specIdList = specList.Select(x => x.Id).ToArray();
+                var eleList = _tplEleRepostitory.GetAll().Where(x => specIdList.Contains(x.TplSpecId) && x.IsDeleted == false)
+                    .OrderBy(x => x.TplSpecId).ToList();
+
+                List<BaseInfoDto> specInfoList = new List<BaseInfoDto>();
+                List<BaseInfoDto> eleInfoList = new List<BaseInfoDto>();
+
+                int rowNum = 0;
+                foreach (var specItem in specList)
+                {
+                    var tempEleList = eleList.Where(x => x.TplSpecId == specItem.Id).Select(x => new BaseInfoDto()
+                    {
+                        Id = x.Id,
+                        Name = x.ElementName + (String.IsNullOrEmpty(x.UnitName) ? string.Empty : "(" + x.UnitName + ")"),
+                        Count = 1,
+                        OrderNum = x.OrderNo
+                    }).OrderBy(x => x.OrderNum).ToList();
+                    BaseInfoDto tempSpecInfo = new BaseInfoDto()
+                    {
+                        Id = specItem.Id,
+                        Name = specItem.SpecName,
+                        Count = tempEleList.Count() == 0 ? 1 : tempEleList.Count()
+                    };
+                    rowNum += tempSpecInfo.Count;
+                    specInfoList.Add(tempSpecInfo);
+                    eleInfoList.InsertRange(eleInfoList.Count(), tempEleList);
+                }
+                tplBaseInfo.Count = rowNum;
+
+                TemplateInfoDto tplInfoDto = new TemplateInfoDto()
+                {
+                    Template = tplBaseInfo,
+                    Specimens = specInfoList,
+                    Elements = eleInfoList,
+                };
+                return tplInfoDto;
+
+            }
+            return null;
+        }
+
+        // 生成单行数据
+        private List<string> GetSingleRowData(List<TypeIn> typeInList, List<TypeInItem> typeItemList, List<TemplateInfoDto> schema, string samplingDate, string samplingTime)
+        {
+            var tempTypeInArray = typeInList.Select(x => x.Id);
+            var tempTypeItemList = typeItemList.Where(x => tempTypeInArray.Contains(x.TypeInId)).ToList();
+
+            List<string> strList = new List<string>();
+            strList.Add($"{samplingDate} {samplingTime}");
+            foreach (var tplItem in schema)
+            {
+                foreach (var specItem in tplItem.Specimens)
+                {   
+                    foreach (var eleItem in tplItem.Elements)
+                    {
+                        int tempEleId = eleItem.Id;
+                        TypeInItem tempItem = tempTypeItemList.Where(x => x.SpecimenId == specItem.Id && x.ElementId == tempEleId).FirstOrDefault();
+                        if (tempItem != null)
+                        {
+                            strList.Add(tempItem.EleValue);
+                        }
+                        else
+                        {
+                            strList.Add(string.Empty);
+                        }
+                    }
+                }
+            }
+            return strList;
+        }
+
+
+        #endregion
+
 
         public DataSearchTableDto GetDataInfoByTemplateIdAndSpecId(int input, int[] specId, DateTime begin, DateTime endTime)
         {
@@ -313,7 +476,7 @@ namespace LIMS.Assay.Data
             {
                 query = query.Where(x => specId.Contains(x.SpecId));
             }
-            
+
             var typeInList = query
                 .OrderByDescending(x => x.SamplingDate)
                 .ToList();
@@ -402,16 +565,16 @@ namespace LIMS.Assay.Data
             // 遍历，如果能转换为double，则加入到numList，汇总数记入dList
             foreach (var dataItem in dataList)
             {
-                for (int i=1;i<dataItem.Count;i++)
+                for (int i = 1; i < dataItem.Count; i++)
                 {
-                    string item=dataItem[i];
+                    string item = dataItem[i];
                     double tempDd = 0;
                     if (double.TryParse(item, out tempDd))
                     {
                         dList[i - 1] = dList[i - 1] + tempDd;
                         numList[i - 1] = numList[i - 1] + 1;
                     }
-                    
+
                 }
             }
             // 行数>0，则计算平均值
@@ -472,13 +635,13 @@ namespace LIMS.Assay.Data
             endTime = DateTime.Parse(endTime.ToLocalTime().ToString("yyyy-MM-dd 23:59:59"));
 
             var typeInQuery = _typeInRepository.GetAll()
-                .Where(x => x.TplId == input && specId.Contains(x.SpecId) && x.SignTm >= begin && x.SignTm <= endTime);
+                .Where(x => x.TplId == input && specId.Contains(x.SpecId) && x.SamplingTm >= begin && x.SamplingTm <= endTime);
             if (specId.Contains(-1))
             {
-                typeInQuery= _typeInRepository.GetAll()
-                .Where(x => x.TplId == input && x.SignTm >= begin && x.SignTm <= endTime);
+                typeInQuery = _typeInRepository.GetAll()
+                .Where(x => x.TplId == input && x.SamplingTm >= begin && x.SamplingTm <= endTime);
             }
-            
+
             var typeInList = typeInQuery
                 .OrderByDescending(x => x.SignTm)
                 .ToList();
@@ -486,15 +649,14 @@ namespace LIMS.Assay.Data
             var typeInIdArray = typeInList.Select(x => x.Id).ToList();
             var typeInItemList = _typeInItemRepository.GetAll()
                 .Where(x => typeInIdArray.Contains(x.TypeInId)).ToList();
-            //获取样品
+            // 获取样品
             var specList = typeInList.Select(x => x.SpecId).Distinct().ToList();
             var specSchemaInfoList = this._tplEleRepostitory.GetAll().Where(x => specList.Contains(x.TplSpecId)).ToList();
 
-            //获取所有的签到信息(签到id不为空)
+            // 获取所有的签到信息(签到id不为空)
             var signIdArray = typeInList.Where(x => !string.IsNullOrEmpty(x.SignId)).Select(x => x.SignId).ToArray();
             var signIdIntArray = Array.ConvertAll<string, int>(signIdArray, x => int.Parse(x));
             var attendanceList = this._attendanceRepository.GetAll().Where(x => signIdIntArray.Contains(x.Id)).ToList();
-
 
             List<MultiTableDataInfoDto> tableInfoList = new List<MultiTableDataInfoDto>();
 
@@ -608,7 +770,6 @@ namespace LIMS.Assay.Data
                     TableData = eleList,
                     StatisticData = statisticList
                 };
-
                 tableInfoList.Add(tempData);
             }
 
@@ -620,7 +781,7 @@ namespace LIMS.Assay.Data
         {
             List<MultiTableDataInfoDto> excelData = GetMultiTableDataInfoBySpecId(input, specId, begin, endTime);
             ExcelOper exceler = new ExcelOper();
-            string fileName=exceler.CreateExcelAndSaveLocalSingleSheet(excelData);
+            string fileName = exceler.CreateExcelAndSaveLocalSingleSheet(excelData);
             if (string.IsNullOrEmpty(fileName))
             {
                 return "-1";

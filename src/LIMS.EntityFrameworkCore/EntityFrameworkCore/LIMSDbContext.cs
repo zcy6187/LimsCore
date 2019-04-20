@@ -34,6 +34,7 @@ namespace LIMS.EntityFrameworkCore
         public DbSet<Assay.AssayUser> AssayUser { get; set; }
         public DbSet<SysManager.UserZt> UserZt { get; set; }
         public DbSet<SysManager.UserTplSpecimens> UserTplSpecimen { get; set; }
+        public DbSet<Assay.SelfTpl> SelfTpl { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

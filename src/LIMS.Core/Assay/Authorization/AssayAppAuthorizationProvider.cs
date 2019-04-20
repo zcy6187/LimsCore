@@ -33,6 +33,7 @@ namespace LIMS.Assay.Authorization
             pageAssaySearch.CreateChildPermission(AssayAppPermissions.UserMultiTableSearch,L(AssayAppPermissions.UserMultiTableSearch));
             pageAssaySearch.CreateChildPermission(AssayAppPermissions.ZtMultiTableSearch,L(AssayAppPermissions.ZtMultiTableSearch));
             pageAssaySearch.CreateChildPermission(AssayAppPermissions.UserSingleTableSearch, L(AssayAppPermissions.UserSingleTableSearch));
+            pageAssaySearch.CreateChildPermission(AssayAppPermissions.SelfTplSearch,L(AssayAppPermissions.SelfTplSearch));
 
             var pageStatistic = context.CreatePermission(AssayAppPermissions.Statistic,
                 L(AssayAppPermissions.Statistic),

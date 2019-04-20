@@ -40,4 +40,13 @@ namespace LIMS.Assay
         public string scanId { get; set; }
         public string elementIds { get; set; }
     }
+    [Table("assay_selfTpl")]
+    public class SelfTpl : Entity
+    {
+        public string tplName { get; set; }
+        public long userId { get; set; }
+        public string tplIds { get; set; }
+        public string tplSpecIds { get; set; }
+        public bool IsDeleted { get; set; }
+    }
 }

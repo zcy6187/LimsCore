@@ -28,6 +28,7 @@ namespace LIMS.Assay.Authorization
         public const string UserMultiTableSearch = "Pages.AssaySearch.UserMultiSearch";
         public const string UserSingleTableSearch = "Pages.AssaySearch.UserSingleTableSearch";
         public const string ZtMultiTableSearch = "Pages.AssaySearch.ZtMultiSearch";
+        public const string SelfTplSearch = "Pages.AssaySearch.SelfTplSearch";
 
 
         public const string Statistic = "Pages.Statistic";

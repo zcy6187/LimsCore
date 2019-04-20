@@ -230,7 +230,7 @@ namespace LIMS.Assay.Data
                 // 插入数据，获取当前插入ID
                 tempTypeInId = _typeInRep.InsertAndGetId(tempTypeIn);
             }
-            else // 只更新元素信息
+            else // 有信息则，只更新元素信息
             {
                 tempTypeIn.EleIds = elementIds;
                 tempTypeIn.EleNames = elementNames;
@@ -298,9 +298,11 @@ namespace LIMS.Assay.Data
                 int tempAttenId = int.Parse(findTypeIn.SignId);
                 findAttendance = _attendanceRep.Single(x => x.Id == tempAttenId);
             }
-
-            findTypeIn.SamplingDate = samplingDate.ToString("yyyy-MM-dd");
-            findTypeIn.SamplingTime = samplingTime;
+            else
+            {
+                findTypeIn.SamplingDate = samplingDate.ToString("yyyy-MM-dd");
+                findTypeIn.SamplingTime = samplingTime;
+            }
 
 
             // 获取化验元素信息
@@ -329,6 +331,7 @@ namespace LIMS.Assay.Data
             // 更新签到表信息
             if (findAttendance != null)
             {
+                findAttendance.TplElementIds = newElementIds;
                 if (findAttendance.TplElementIds == newElementIds)
                 {
                     findAttendance.Flag = 2;
@@ -337,7 +340,6 @@ namespace LIMS.Assay.Data
                 {
                     findAttendance.Flag = 1;
                 }
-
                 _attendanceRep.UpdateAsync(findAttendance);
             }
 
