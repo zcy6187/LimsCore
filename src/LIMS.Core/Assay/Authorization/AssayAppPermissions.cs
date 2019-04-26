@@ -30,6 +30,10 @@ namespace LIMS.Assay.Authorization
         public const string ZtMultiTableSearch = "Pages.AssaySearch.ZtMultiSearch";
         public const string SelfTplSearch = "Pages.AssaySearch.SelfTplSearch";
 
+        public const string AssayProcess = "Pages.Process";
+        public const string ProcessInstrument = "Pages.Process.Instrument";
+        public const string ProcessFormula = "Pages.Process.Formula";
+
 
         public const string Statistic = "Pages.Statistic";
         public const string Company = "Pages.Statistic.Company";

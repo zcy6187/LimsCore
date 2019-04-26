@@ -98,6 +98,8 @@ namespace LIMS.Assay.Base
         {
             var deleteItem = _tplElementRepository.Single(x => x.Id == inputId);
             deleteItem.IsDeleted = true;
+            deleteItem.CreatorId = Convert.ToInt32(AbpSession.UserId ?? 0);
+            deleteItem.LastModifyTime = DateTime.Now;
 
             await _tplElementRepository.UpdateAsync(deleteItem);
 

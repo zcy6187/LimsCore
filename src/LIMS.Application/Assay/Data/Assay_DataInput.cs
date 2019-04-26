@@ -158,8 +158,15 @@ namespace LIMS.Assay.Data
             {
                 return;
             }
+            // 获取化验元素信息 
+            eleDataList = eleDataList.OrderBy(x => x.EleId).ToList();
+            string elementIds = string.Join(",", eleDataList.Select(x => x.EleId));
+            string elementNames = string.Join(",", eleDataList.Select(x => x.EleName));
 
             Attendance findAttendance = null;
+            TypeIn tempTypeIn = null;
+            // 记录数据插入的Id
+            int tempTypeInId = -1;
 
             // 签到Id和typeIn的Id都为空，则需要去签到表中检测签Id
             if (string.IsNullOrEmpty(item.SignId))
@@ -178,23 +185,16 @@ namespace LIMS.Assay.Data
             else
             {
                 findAttendance = _attendanceRep.Single(x => x.Id == int.Parse(item.SignId));
+                // 如果签到信息存在，则去TypeIn表中查找是否有录入记录
+                tempTypeIn = _typeInRep.GetAll().Where(x => x.SignId == item.SignId && x.IsDeleted == false).FirstOrDefault();
             }
 
-            // 获取化验元素信息 
-            eleDataList = eleDataList.OrderBy(x => x.EleId).ToList();
-            string elementIds = string.Join(",", eleDataList.Select(x => x.EleId));
-            string elementNames = string.Join(",", eleDataList.Select(x => x.EleName));
-
-            // 创建签到数据模型，并填充基础信息
-            CreateTypeInDto typeIn = new CreateTypeInDto();
-            TypeIn tempTypeIn = null;
-            // 记录数据插入的Id
-            int tempTypeInId = -1;
-            // 如果签到信息存在，则去TypeIn表中查找是否有录入记录
-            tempTypeIn = _typeInRep.GetAll().Where(x => x.SignId == typeIn.SignId && x.IsDeleted == false).FirstOrDefault();
+            
             // 如果typeIn表中没有记录，则根据签到信息回填，或者根据已有信息创建新的TypeIn
             if (tempTypeIn == null)
             {
+                // 创建签到数据模型，并填充基础信息
+                TypeIn typeIn = new TypeIn();
                 typeIn.IsParallel = false; // 平行样
                 string attendanceEleIds = string.Empty;
                 typeIn.TplId = tplId;
@@ -216,19 +216,18 @@ namespace LIMS.Assay.Data
                     typeIn.SamplingTime = findAttendance.SamplingTime;
                     typeIn.SamplingTm = DateTime.Parse(findAttendance.SamplingDate.ToString("yyyy-MM-dd ") + findAttendance.SamplingTime);
                     typeIn.SignTm = findAttendance.SignTime;
+
                 }
                 else // 没有签到信息，则根据已有信息补充
                 {
                     string samplDate = samplingDate.ToString("yyyy-MM-dd");
                     typeIn.SamplingDate = samplDate;
                     typeIn.SamplingTime = samplingTime;
-
-                    typeIn.SamplingTm = DateTime.Parse($"{samplingDate} {samplingTime}");
+                    typeIn.SamplingTm = DateTime.Parse($"{samplDate} {samplingTime}");
                     typeIn.SignTm = DateTime.Now;
-                    tempTypeIn.CreateTime = DateTime.Now;  
                 }
                 // 插入数据，获取当前插入ID
-                tempTypeInId = _typeInRep.InsertAndGetId(tempTypeIn);
+                tempTypeInId = _typeInRep.InsertAndGetId(typeIn);
             }
             else // 有信息则，只更新元素信息
             {

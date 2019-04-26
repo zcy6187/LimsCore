@@ -35,6 +35,8 @@ namespace LIMS.EntityFrameworkCore
         public DbSet<SysManager.UserZt> UserZt { get; set; }
         public DbSet<SysManager.UserTplSpecimens> UserTplSpecimen { get; set; }
         public DbSet<Assay.SelfTpl> SelfTpl { get; set; }
+        public DbSet<Assay.AssayEleFormula> EleFormula { get; set; }
+        public DbSet<Assay.AssayFormulaPram> FormulaPram { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -83,6 +85,9 @@ namespace LIMS.EntityFrameworkCore
                 .HasDefaultValue(0);
 
             modelBuilder.Entity<SysManager.UserTplSpecimens>().Property(x => x.IsDeleted)
+               .HasDefaultValue(0);
+
+            modelBuilder.Entity<AssayEleFormula>().Property(x => x.IsDeleted)
                .HasDefaultValue(0);
 
             modelBuilder.Entity<V_UserTpl>(entity =>

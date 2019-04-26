@@ -27,6 +27,10 @@
     <text name="Pages.AssaySearch.ZtMultiSearch" value="帐套多表查询" />
     <text name="Pages.AssaySearch.SelfTplSearch" value="自定义拼接查询"/>
 
+    <text name="Pages.Process" value="过程管理" />
+    <text name="Pages.Process.Instrument" value="仪器管理" />
+    <text name="Pages.Process.Formula" value="元素公式" />
+    
     <text name="Pages.System" value="系统管理" />
     <text name="Pages.System.User" value="用户管理" />
     <text name="Pages.System.Role" value="角色管理" />
