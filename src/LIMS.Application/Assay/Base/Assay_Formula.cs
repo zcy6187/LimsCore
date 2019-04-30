@@ -41,6 +41,18 @@ namespace LIMS.Assay.Base
             formulaStr = formulaStr.ToLower();
             formulaStr = formulaStr.Replace(" ", "");
 
+            // 解决mv/c这种匹配问题
+            string expFromat = "([mvc]\\d *){ 2,}";
+            var expMatch=Regex.Matches(expFromat,formulaStr);
+            if (expMatch.Count > 0)
+            {
+                return new HtmlDataOperRetDto()
+                {
+                    Code = -1,
+                    Message = "该公式不合法!"
+                };
+            }
+
             // 简单的匹配
             string mPattern = "m[0-9]*";
             string vPattern = "v[0-9]*";
@@ -94,7 +106,7 @@ namespace LIMS.Assay.Base
                     new HtmlDataOperRetDto()
                     {
                         Code = -1,
-                        Message = "公式不合法！"
+                        Message = "该公式不合法！"
                     };
             }            
         }
@@ -128,6 +140,18 @@ namespace LIMS.Assay.Base
             formulaStr = formulaStr.Replace('（', '(');
             formulaStr = formulaStr.ToLower();
             formulaStr = formulaStr.Replace(" ", "");
+
+            // 解决mv/c这种匹配问题
+            string expFromat = "([mvc]\\d *){ 2,}";
+            var expMatch = Regex.Matches(expFromat, formulaStr);
+            if (expMatch.Count > 0)
+            {
+                return new HtmlDataOperRetDto()
+                {
+                    Code = -1,
+                    Message = "该公式不合法!"
+                };
+            }
 
             // 简单的匹配
             string mPattern = "m\\d+";

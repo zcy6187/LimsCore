@@ -142,10 +142,11 @@ namespace LIMS.Assay.Data
             var retList = new List<AttendanceDto>();
             if (count > 0)
             {
-                var elements = query.OrderByDescending(x => x.Id)
+                var sqlQuery = query.OrderByDescending(x => x.Id)
                                 .Skip(pageQueryDto.SkipCount)
-                                .Take(pageQueryDto.MaxResultCount)
-                                .ToList();
+                                .Take(pageQueryDto.MaxResultCount);
+                var elements = sqlQuery.ToList();
+
                 foreach (var item in elements)
                 {
                     var temp = new AttendanceDto()
