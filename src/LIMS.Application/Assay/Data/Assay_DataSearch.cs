@@ -776,6 +776,7 @@ namespace LIMS.Assay.Data
             return tableInfoList;
         }
 
+        #region 多表导出
         // 下载excel(1个sheet)
         public string GetExcelNameBySpecIdSinleSheet(int input, int[] specId, DateTime begin, DateTime endTime)
         {
@@ -807,5 +808,40 @@ namespace LIMS.Assay.Data
                 return fileName;
             }
         }
+        #endregion
+
+        #region 单表导出
+        public string GetExcelNameByTemplateIdAndSpecId(int input, int[] specId, DateTime begin, DateTime endTime)
+        {
+            DataSearchTableDto dataInfo = GetDataInfoByTemplateIdAndSpecId(input, specId, begin, endTime);
+            ExcelOper exceler = new ExcelOper();
+            string fileName = exceler.CreateSingleTableSearchExcel(dataInfo);
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return "-1";
+            }
+            else
+            {
+                return fileName;
+            }
+
+        }
+
+        public string GetExcelNameBySelfCode(int selfTplId, DateTime begin, DateTime endTime)
+        {
+            var dataInfo = GetDataInfoBySelfCode(selfTplId,begin,endTime);
+            ExcelOper exceler = new ExcelOper();
+            string fileName = exceler.CreateSelfCodeSearchExcel(dataInfo);
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return "-1";
+            }
+            else
+            {
+                return fileName;
+            }
+
+        }
+        #endregion
     }
 }

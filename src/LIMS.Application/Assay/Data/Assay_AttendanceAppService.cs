@@ -29,14 +29,18 @@ namespace LIMS.Assay.Data
             beginTime = DateTime.Parse(beginTime.ToString("yyyy-MM-dd 00:00:00"));
             endTime = DateTime.Parse(endTime.ToString("yyyy-MM-dd 23:59:59"));
             var query = _repository.GetAll().Where(x => !x.IsDeleted && x.signTime >= beginTime && x.signTime <= endTime);
-            if (!string.IsNullOrEmpty(orgCode))
-            {
-                query = query.Where(x => x.orgCode.StartsWith(orgCode));
-            }
+            
             int typeTplId = tplId ?? 0;
             if (typeTplId > 0)
             {
                 query = query.Where(x => x.tplId == typeTplId);
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(orgCode))
+                {
+                    query = query.Where(x => x.orgCode.StartsWith(orgCode));
+                }
             }
             if (!string.IsNullOrEmpty(specId))
             {

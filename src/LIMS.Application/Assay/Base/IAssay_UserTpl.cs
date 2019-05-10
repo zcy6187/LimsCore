@@ -12,5 +12,13 @@ namespace LIMS.Assay.Base
         Task AddUserTpl(CreateUserTplDto input);
         Task EditUserTpl(EditVUserTplDto input);
         Task DeleteUserTplById(int inputId);
+
+        Dtos.HtmlDataOperRetDto AddOrUpdateSingleTplSpec(TplSpecDto specItem);
+        Dtos.HtmlDataOperRetDto AddOrUpdateUserOrg(UserDataDto input);
+
+        List<string> GetUserOrgIds();
+        List<string> GetUserTplIds();
+        List<string> GetUserTplSpecIds(int tplId);
+
     }
 }

@@ -17,6 +17,25 @@ namespace LIMS.Assay
         public bool IsDeleted { get;set; }
     }
 
+    [Table("sys_userOrgTpl")]
+    public class UserOrgTpl : Entity, ISoftDelete
+    {
+        public long UserId { get; set; }
+        // 用户的化验模板ID
+        public int OrgId { get; set; }
+        public string TplIds { get; set; }
+        public bool IsDeleted { get; set; }
+    }
+
+    [Table("sys_userOrg")]
+    public class UserOrg : Entity, ISoftDelete
+    {
+        public long UserId { get; set; }
+        // 用户的化验模板ID
+        public string OrgIds { get; set; }
+        public bool IsDeleted { get; set; }
+    }
+
     public class V_Attendance: Entity
     {
         public string orgCode { get; set; }

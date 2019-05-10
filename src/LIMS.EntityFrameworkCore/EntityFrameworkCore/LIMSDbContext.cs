@@ -37,6 +37,8 @@ namespace LIMS.EntityFrameworkCore
         public DbSet<Assay.SelfTpl> SelfTpl { get; set; }
         public DbSet<Assay.AssayEleFormula> EleFormula { get; set; }
         public DbSet<Assay.AssayFormulaPram> FormulaPram { get; set; }
+        public DbSet<Assay.UserOrg> UserOrgs { get; set; }
+        public DbSet<Assay.UserOrgTpl> UserOrgTpls { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -89,6 +91,12 @@ namespace LIMS.EntityFrameworkCore
 
             modelBuilder.Entity<AssayEleFormula>().Property(x => x.IsDeleted)
                .HasDefaultValue(0);
+
+            modelBuilder.Entity<Assay.UserOrg>().Property(x => x.IsDeleted)
+              .HasDefaultValue(0);
+
+            modelBuilder.Entity<Assay.UserOrgTpl>().Property(x => x.IsDeleted)
+              .HasDefaultValue(0);
 
             modelBuilder.Entity<V_UserTpl>(entity =>
             {

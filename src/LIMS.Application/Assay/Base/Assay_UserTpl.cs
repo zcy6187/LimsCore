@@ -16,14 +16,18 @@ namespace LIMS.Assay.Base
         private IRepository<Template, int> _tplRepository;
         private IRepository<UserTpl, int> _utplRepository;
         private IRepository<UserTplSpecimens, int> _uTplSpecimenRepository;
+        private IRepository<UserOrg, int> _uUserOrgRepository;
 
         public Assay_UserTpl(IRepository<V_UserTpl, long> repository, IRepository<Template, int> tplRepository,
-            IRepository<UserTpl, int> uTplRepository, IRepository<UserTplSpecimens, int> uTplSpecimenRepository)
+            IRepository<UserTpl, int> uTplRepository, 
+            IRepository<UserTplSpecimens, int> uTplSpecimenRepository,
+            IRepository<UserOrg, int> uUserOrgRepository)
         {
             this._repository = repository;
             this._tplRepository = tplRepository;
             this._utplRepository = uTplRepository;
             this._uTplSpecimenRepository = uTplSpecimenRepository;
+            this._uUserOrgRepository = uUserOrgRepository;
         }
 
         public List<EditVUserTplDto> SearchUserTpls(string input)
@@ -155,6 +159,174 @@ namespace LIMS.Assay.Base
             var deleteItem=this._utplRepository.Single(x=>x.Id==inputId);
             deleteItem.TplIds = string.Empty;
             return this._utplRepository.UpdateAsync(deleteItem);
+        }
+
+        // 获取用户帐套权限
+        public List<string> GetUserOrgIds()
+        {
+            var userId=AbpSession.UserId ?? 0;
+           
+            // 查询 UserOrg
+            var userInfo=this._uUserOrgRepository.GetAll().Where(x => x.UserId == userId).SingleOrDefault();
+            // 返回空的字符串
+            if (userInfo == null)
+            {
+                List<string> orgList = new List<string>();
+                return orgList;
+            }
+            else
+            {
+                string orgIds = userInfo.OrgIds;
+                string[] orgArray =orgIds.Split(new char[] { ',' },StringSplitOptions.RemoveEmptyEntries);
+                return orgArray.ToList();
+            }
+        }
+        // 获取用户模板权限
+        public List<string> GetUserTplIds()
+        {
+            var userId = AbpSession.UserId ?? 0;
+
+            // 查询 UserOrg
+            var tplInfo = this._utplRepository.GetAll().Where(x => x.UserId == userId).SingleOrDefault();
+            // 返回空的字符串
+            if (tplInfo == null)
+            {
+                List<string> tplList = new List<string>();
+                return tplList;
+            }
+            else
+            {
+                string tplIds = tplInfo.TplIds;
+                string[] tplArray = tplIds.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                return tplArray.ToList();
+            }
+        }
+        // 获取用户样品权限
+        public List<string> GetUserTplSpecIds(int tplId)
+        {
+            var userId = AbpSession.UserId ?? 0;
+
+            // 查询 UserOrg
+            var specInfo = this._uTplSpecimenRepository.GetAll().Where(x => x.UserId == userId && x.TplId==tplId).SingleOrDefault();
+            // 返回空的字符串
+            if (specInfo == null)
+            {
+                List<string> specList = new List<string>();
+                return specList;
+            }
+            else
+            {
+                string specIds = specInfo.SpecimenIds;
+                string[] specArray = specIds.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                return specArray.ToList();
+            }
+        }
+
+        // 更新整个用户权限
+        public Dtos.HtmlDataOperRetDto AddOrUpdateUserOrg(UserDataDto input)
+        {
+            long thisUserId=AbpSession.UserId ?? 0;
+            string orgIds = input.OrgIds;
+            string tplIds= input.TplIds;
+            List<TplSpecDto> specList = input.TplSpecList;
+
+            // 修改UserOrg
+            if (!string.IsNullOrEmpty(orgIds))
+            {
+                var userOrg=_uUserOrgRepository.GetAll().Where(x => x.UserId == thisUserId).SingleOrDefault();
+                if (userOrg == null)
+                {
+                    UserOrg tmpUserOrg = new UserOrg();
+                    tmpUserOrg.OrgIds = orgIds;
+                    tmpUserOrg.UserId = thisUserId;
+                    tmpUserOrg.IsDeleted = false;
+                    _uUserOrgRepository.Insert(tmpUserOrg);
+                }
+                else
+                {
+                    userOrg.OrgIds = orgIds;
+                    _uUserOrgRepository.Update(userOrg);
+                }
+            }
+
+            // 修改UserTpl
+            if (!string.IsNullOrEmpty(tplIds))
+            {
+                var userTpl = _utplRepository.GetAll().Where(x => x.UserId == thisUserId).SingleOrDefault();
+                if (userTpl == null)
+                {
+                    UserTpl  tmpUserTpl= new UserTpl();
+                    tmpUserTpl.UserId = thisUserId;
+                    tmpUserTpl.TplIds = tplIds;
+                    tmpUserTpl.IsDeleted = false;
+                    _utplRepository.Insert(tmpUserTpl);
+                }
+                else
+                {
+                    userTpl.TplIds = tplIds;
+                    _utplRepository.Update(userTpl);
+                }
+            }
+
+
+            // 修改UserTplSpec
+            if (specList!=null && specList.Count>0)
+            {
+                var tplSpecList=_uTplSpecimenRepository.GetAll().Where(x => x.UserId == thisUserId).ToList();
+                foreach (var specItem in specList)
+                {
+                   var tmpUserTplSpec=tplSpecList.Where(x => x.TplId == int.Parse(specItem.TplId)).SingleOrDefault();
+                    if (tmpUserTplSpec != null)
+                    {
+                        tmpUserTplSpec.SpecimenIds = specItem.SpecIds;
+                        _uTplSpecimenRepository.Update(tmpUserTplSpec);
+                    }
+                    else
+                    {
+                        UserTplSpecimens insertSpec = new UserTplSpecimens();
+                        insertSpec.UserId = thisUserId;
+                        insertSpec.TplId = int.Parse(specItem.TplId);
+                        insertSpec.SpecimenIds = specItem.SpecIds;
+                        insertSpec.IsDeleted = false;
+                        _uTplSpecimenRepository.Insert(insertSpec);
+                    }
+                }
+            }
+
+            return new Dtos.HtmlDataOperRetDto()
+            {
+                Code = 1,
+                Message = "操作成功!"
+            };
+        }
+
+        // 更新或者保存样品
+        public Dtos.HtmlDataOperRetDto AddOrUpdateSingleTplSpec(TplSpecDto specItem)
+        {
+            long userId = AbpSession.UserId ?? 0;
+            var tplSpecList = _uTplSpecimenRepository.GetAll().Where(x => x.UserId == userId).ToList();
+
+            var tmpUserTplSpec = tplSpecList.Where(x => x.TplId == int.Parse(specItem.TplId)).SingleOrDefault();
+            if (tmpUserTplSpec != null)
+            {
+                tmpUserTplSpec.SpecimenIds = specItem.SpecIds;
+                _uTplSpecimenRepository.Update(tmpUserTplSpec);
+            }
+            else
+            {
+                UserTplSpecimens insertSpec = new UserTplSpecimens();
+                insertSpec.UserId = userId;
+                insertSpec.TplId = int.Parse(specItem.TplId);
+                insertSpec.SpecimenIds = specItem.SpecIds;
+                insertSpec.IsDeleted = false;
+                _uTplSpecimenRepository.Insert(insertSpec);
+            }
+
+            return new Dtos.HtmlDataOperRetDto()
+            {
+                Code = 1,
+                Message = "操作成功!"
+            };
         }
 
         // 更新用户模板样品
