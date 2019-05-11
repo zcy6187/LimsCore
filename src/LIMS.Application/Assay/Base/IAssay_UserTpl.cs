@@ -16,9 +16,13 @@ namespace LIMS.Assay.Base
         Dtos.HtmlDataOperRetDto AddOrUpdateSingleTplSpec(TplSpecDto specItem);
         Dtos.HtmlDataOperRetDto AddOrUpdateUserOrg(UserDataDto input);
 
+        Dtos.HtmlDataOperRetDto AddOrUpdateUserOrgs(string orgIds);
+        Dtos.HtmlDataOperRetDto AddOrUpdateOrgTpls(int orgId, string tplIds);
+        Dtos.HtmlDataOperRetDto AddOrUpdateTplSpecByTplId(int tplId, string specIds);
+
         List<string> GetUserOrgIds();
         List<string> GetUserTplIds();
         List<string> GetUserTplSpecIds(int tplId);
-
+        List<string> GetUserTplIdsByOrgId(int orgId);
     }
 }

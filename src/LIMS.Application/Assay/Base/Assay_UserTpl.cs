@@ -17,17 +17,20 @@ namespace LIMS.Assay.Base
         private IRepository<UserTpl, int> _utplRepository;
         private IRepository<UserTplSpecimens, int> _uTplSpecimenRepository;
         private IRepository<UserOrg, int> _uUserOrgRepository;
+        private IRepository<UserOrgTpl, int> _uUserOrgTplRepository;
 
         public Assay_UserTpl(IRepository<V_UserTpl, long> repository, IRepository<Template, int> tplRepository,
             IRepository<UserTpl, int> uTplRepository, 
             IRepository<UserTplSpecimens, int> uTplSpecimenRepository,
-            IRepository<UserOrg, int> uUserOrgRepository)
+            IRepository<UserOrg, int> uUserOrgRepository,
+            IRepository<UserOrgTpl, int> uUserOrgTplRepository)
         {
             this._repository = repository;
             this._tplRepository = tplRepository;
             this._utplRepository = uTplRepository;
             this._uTplSpecimenRepository = uTplSpecimenRepository;
             this._uUserOrgRepository = uUserOrgRepository;
+            this._uUserOrgTplRepository = uUserOrgTplRepository;
         }
 
         public List<EditVUserTplDto> SearchUserTpls(string input)
@@ -161,7 +164,7 @@ namespace LIMS.Assay.Base
             return this._utplRepository.UpdateAsync(deleteItem);
         }
 
-        // 获取用户帐套权限
+        // 获取帐套权限
         public List<string> GetUserOrgIds()
         {
             var userId=AbpSession.UserId ?? 0;
@@ -181,7 +184,7 @@ namespace LIMS.Assay.Base
                 return orgArray.ToList();
             }
         }
-        // 获取用户模板权限
+        // 获取所有化验模板权限
         public List<string> GetUserTplIds()
         {
             var userId = AbpSession.UserId ?? 0;
@@ -365,6 +368,119 @@ namespace LIMS.Assay.Base
                 this._uTplSpecimenRepository.Delete(item);
             }
 
+        }
+
+        // 更新模板元素ids
+        public Dtos.HtmlDataOperRetDto AddOrUpdateTplSpecByTplId(int tplId,string specIds)
+        {
+            long uid=this.AbpSession.UserId ?? 0;
+            var item=this._uTplSpecimenRepository.GetAll().Where(x => x.UserId == uid && x.TplId==tplId).SingleOrDefault();
+            if (item == null)
+            {
+                UserTplSpecimens tmpItem = new UserTplSpecimens();
+                tmpItem.UserId = uid;
+                tmpItem.TplId=tplId;
+                tmpItem.SpecimenIds = specIds;
+                tmpItem.IsDeleted = false;
+            }
+            else
+            {
+                item.SpecimenIds = specIds;
+                this._uTplSpecimenRepository.Update(item);
+            }
+
+            return new Dtos.HtmlDataOperRetDto()
+            {
+                Code = 1,
+                Message = "操作成功!"
+            };
+        }
+
+        // 更改账户信息
+        public Dtos.HtmlDataOperRetDto AddOrUpdateUserOrgs(string orgIds)
+        {
+            long uid=this.AbpSession.UserId ?? 0;
+            var item=this._uUserOrgRepository.GetAll().Where(x => x.UserId == uid).SingleOrDefault();
+            if (item == null)
+            {
+                UserOrg tmpItem = new UserOrg();
+                tmpItem.UserId = uid;
+                tmpItem.OrgIds = orgIds;
+                tmpItem.IsDeleted = false;
+            }
+            else
+            {
+                item.OrgIds = orgIds;
+                this._uUserOrgRepository.Update(item);
+            }
+
+            return new Dtos.HtmlDataOperRetDto()
+            {
+                Code = 1,
+                Message = "操作成功!"
+            };
+        }
+
+        // 更新OrgTpls
+        public Dtos.HtmlDataOperRetDto AddOrUpdateOrgTpls(int orgId, string tplIds)
+        {
+            long uid = this.AbpSession.UserId ?? 0;
+            var items = this._uUserOrgTplRepository.GetAll().Where(x => x.UserId == uid).ToList();
+            if (items == null || items.Count==0 )
+            {
+                AddNewOrgTpls(uid, orgId, tplIds);
+            }
+            else
+            {
+                var findTmp = items.Where(x => x.OrgId == orgId).SingleOrDefault();
+                if (findTmp == null)
+                {
+                    AddNewOrgTpls(uid, orgId, tplIds);
+                }
+                else
+                {
+                    findTmp.TplIds = tplIds;
+                    this._uUserOrgTplRepository.Update(findTmp);
+                }
+
+            }
+
+            return new Dtos.HtmlDataOperRetDto()
+            {
+                Code = 1,
+                Message = "操作成功!"
+            };
+        }
+
+        private void AddNewOrgTpls(long uid,int orgId, string tplIds)
+        {
+            UserOrgTpl tmpItem = new UserOrgTpl();
+            tmpItem.UserId = uid;
+            tmpItem.OrgId = orgId;
+            tmpItem.TplIds = tplIds;
+            tmpItem.IsDeleted = false;
+            this._uUserOrgTplRepository.Insert(tmpItem);
+        }
+
+        // 按组织ID获取化验模板
+        public List<string> GetUserTplIdsByOrgId(int orgId)
+        {
+            var userId = AbpSession.UserId ?? 0;
+
+            // 查询 UserOrg
+            var tplInfo = this._uUserOrgTplRepository.GetAll().Where(x => x.UserId == userId && x.OrgId == orgId).SingleOrDefault();
+            // 返回空的字符串
+            if (tplInfo == null)
+            {
+                List<string> tplList = new List<string>();
+                return tplList;
+            }
+            else
+            {
+                string tplIds = tplInfo.TplIds;
+                string[] tplArray = tplIds.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                return tplArray.ToList();
+            }
         }
     }
 }

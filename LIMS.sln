@@ -31,6 +31,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lims.Extension", "Lims.Exte
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LearnWebApi", "src\LearnWebApi\LearnWebApi.csproj", "{CF5ABC6A-4EA7-4FE6-B798-FB26224E2EA2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tools", "Tools\Tools.csproj", "{44C06AD3-AF6A-4E16-AA8C-58BB7CC3E41E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -77,6 +79,10 @@ Global
 		{CF5ABC6A-4EA7-4FE6-B798-FB26224E2EA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CF5ABC6A-4EA7-4FE6-B798-FB26224E2EA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CF5ABC6A-4EA7-4FE6-B798-FB26224E2EA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{44C06AD3-AF6A-4E16-AA8C-58BB7CC3E41E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{44C06AD3-AF6A-4E16-AA8C-58BB7CC3E41E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{44C06AD3-AF6A-4E16-AA8C-58BB7CC3E41E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{44C06AD3-AF6A-4E16-AA8C-58BB7CC3E41E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
