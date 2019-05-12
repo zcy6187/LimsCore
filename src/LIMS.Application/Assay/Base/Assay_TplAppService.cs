@@ -219,6 +219,15 @@ namespace LIMS.Assay.Base
         }
 
         // 获取所有模板（按组织机构代码）
+        public List<EditTplDto> GetTplsByOrgCodeStrick(string inputCode)
+        {
+            var itemList = _tplRepository.GetAll().Where(x => !x.IsDeleted && x.OrgCode==inputCode).OrderByDescending(x => x.Id).ToList();
+            List<EditTplDto> dtoList = itemList.MapTo<List<EditTplDto>>();
+
+            return dtoList;
+        }
+
+        // 获取所有模板（按组织机构代码）
         public List<EditTplDto> GetTplsByOrgId(int orgId)
         {
             var itemCode=_orgRepository.Single(x => x.Id == orgId).Code;

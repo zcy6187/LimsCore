@@ -13,16 +13,17 @@ namespace LIMS.Assay.Base
         Task EditUserTpl(EditVUserTplDto input);
         Task DeleteUserTplById(int inputId);
 
-        Dtos.HtmlDataOperRetDto AddOrUpdateSingleTplSpec(TplSpecDto specItem);
-        Dtos.HtmlDataOperRetDto AddOrUpdateUserOrg(UserDataDto input);
+        Dtos.HtmlDataOperRetDto PostAddOrUpdateSingleTplSpec(TplSpecDto specItem);
+        Dtos.HtmlDataOperRetDto PostAddOrUpdateUserOrg(UserDataDto input);
 
-        Dtos.HtmlDataOperRetDto AddOrUpdateUserOrgs(string orgIds);
-        Dtos.HtmlDataOperRetDto AddOrUpdateOrgTpls(int orgId, string tplIds);
-        Dtos.HtmlDataOperRetDto AddOrUpdateTplSpecByTplId(int tplId, string specIds);
+        Dtos.HtmlDataOperRetDto PostAddOrUpdateUserOrgs(string orgIds);
+        Dtos.HtmlDataOperRetDto PostAddOrUpdateOrgTpls(string orgId, string tplIds);
+        Dtos.HtmlDataOperRetDto PostAddOrUpdateTplSpecByTplId(int tplId, string specIds);
 
         List<string> GetUserOrgIds();
         List<string> GetUserTplIds();
         List<string> GetUserTplSpecIds(int tplId);
         List<string> GetUserTplIdsByOrgId(int orgId);
+        List<string> GetUserTplIdsByOrgCode(string orgCode);
     }
 }

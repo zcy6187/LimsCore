@@ -22,7 +22,7 @@ namespace LIMS.Assay
     {
         public long UserId { get; set; }
         // 用户的化验模板ID
-        public int OrgId { get; set; }
+        public string OrgId { get; set; }
         public string TplIds { get; set; }
         public bool IsDeleted { get; set; }
     }

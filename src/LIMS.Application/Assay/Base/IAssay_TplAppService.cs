@@ -27,5 +27,6 @@ namespace LIMS.Assay.Base
         List<EditTplSpecimenDto> GetTplSpecimensByTplId(int inputId);
         string ReOrderTplSpecimen(List<ReOrderDto> input);
         List<EditTplDto> GetTplsByOrgId(int orgId);
+        List<EditTplDto> GetTplsByOrgCodeStrick(string inputCode);
     }
 }

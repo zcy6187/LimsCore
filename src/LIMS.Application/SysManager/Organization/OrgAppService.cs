@@ -15,18 +15,21 @@ namespace LIMS.SysManager.Organization
         private readonly IRepository<UserZt, int> _userZtRepository;
         private readonly IRepository<Assay.UserTpl, int> _userTplRepository;
         private readonly IRepository<Assay.Template, int> _tplRepository;
+        private readonly IRepository<Assay.UserOrg, int> _uOrgRepository;
 
         public OrgAppService(
             IRepository<OrgInfo, int> repository,
             IRepository<UserZt, int> userZtRepository,
             IRepository<Assay.UserTpl, int> userTplRepository,
-            IRepository<Assay.Template, int> tplRepository
+            IRepository<Assay.Template, int> tplRepository,
+            IRepository<Assay.UserOrg, int> uOrgRepository
             )
         {
             _repository = repository;
             this._userZtRepository = userZtRepository;
             this._userTplRepository = userTplRepository;
             this._tplRepository = tplRepository;
+            this._uOrgRepository = uOrgRepository;
         }
 
         
@@ -157,24 +160,59 @@ namespace LIMS.SysManager.Organization
         }
 
         #region  根据化验模板，生成组织机构信息
-        // 根据用户的化验模板权限，生成其组织机构信息
+        //// 根据用户的化验模板权限，生成其组织机构信息
+        //public List<OrgTreeNodeDto> GetOrgTreeByTplQx()
+        //{
+        //    long uid=AbpSession.UserId??0;
+        //    var tmpUserTpl=this._userTplRepository.GetAll().Where(x => x.UserId == uid).FirstOrDefault();
+        //    List<OrgTreeNodeDto> treeNodes = new List<OrgTreeNodeDto>();
+        //    if (tmpUserTpl != null)
+        //    {
+        //        string tpls=tmpUserTpl.TplIds;
+        //        string[] tplArray = tpls.Split(",", StringSplitOptions.RemoveEmptyEntries);
+        //        int[] tplIntArray = Array.ConvertAll<string, int>(tplArray, s => int.Parse(s));
+        //        // 获取所有的组织机构 
+        //        var orgCodeList=this._tplRepository.GetAll().Where(x=>tplIntArray.Contains(x.Id)).Select(x=>x.OrgCode).ToList();
+        //        var orgList = this._repository.GetAll().Where(x => orgCodeList.Contains(x.Code)).ToList();
+        //        treeNodes = GetOrgTreeByOrgList(orgList);
+                
+        //    }
+        //    return treeNodes;
+        //}
+
+        // 根据用户的UserOrg权限，生成其组织机构信息
         public List<OrgTreeNodeDto> GetOrgTreeByTplQx()
         {
-            long uid=AbpSession.UserId??0;
-            var tmpUserTpl=this._userTplRepository.GetAll().Where(x => x.UserId == uid).FirstOrDefault();
+            long uid = AbpSession.UserId ?? 0;
+            var tmpUserTpl = this._uOrgRepository.GetAll().Where(x => x.UserId == uid).FirstOrDefault();
             List<OrgTreeNodeDto> treeNodes = new List<OrgTreeNodeDto>();
             if (tmpUserTpl != null)
             {
-                string tpls=tmpUserTpl.TplIds;
-                string[] tplArray = tpls.Split(",", StringSplitOptions.RemoveEmptyEntries);
-                int[] tplIntArray = Array.ConvertAll<string, int>(tplArray, s => int.Parse(s));
-                // 获取所有的组织机构 
-                var orgCodeList=this._tplRepository.GetAll().Where(x=>tplIntArray.Contains(x.Id)).Select(x=>x.OrgCode).ToList();
-                var orgList = this._repository.GetAll().Where(x => orgCodeList.Contains(x.Code)).ToList();
+                string orgIds = tmpUserTpl.OrgIds;
+                string[] orgArray = orgIds.Split(",", StringSplitOptions.RemoveEmptyEntries).ToArray();
+                List<string> pathList =new List<string>();
+                foreach (var item in orgArray)
+                {
+                    AddAllPath(item,pathList);
+                }
+                var pathArray=pathList.ToArray();
+                IEnumerable<string> newOrgs = orgArray.Union(pathArray);
+                var orgList = this._repository.GetAll().Where(x => newOrgs.Contains(x.Code)).ToList();
                 treeNodes = GetOrgTreeByOrgList(orgList);
-                
+
             }
             return treeNodes;
+        }
+
+        // 按orgCode生成其过往路径
+        private void AddAllPath(string orgCode,List<string> pathList)
+        {
+            if (orgCode.Length > 8)
+            {
+                string tmpStr = orgCode.Substring(0, orgCode.Length - 4);
+                pathList.Add(tmpStr);
+                AddAllPath(tmpStr,pathList);
+            }
         }
 
         private List<OrgTreeNodeDto> GetOrgTreeByOrgList(List<OrgInfo> orgList)

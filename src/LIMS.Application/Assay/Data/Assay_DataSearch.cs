@@ -23,6 +23,7 @@ namespace LIMS.Assay.Data
         private IRepository<UserTplSpecimens, int> _userTplSpecimenRepository;
         private IRepository<Attendance, int> _attendanceRepository;
         private IRepository<SelfTpl, int> _selfTplRepository;
+        private IRepository<UserOrgTpl, int> _uOrgTplRepository;
 
         public Assay_DataSearch(IRepository<Template, int> tplRepostitory,
             IRepository<TplSpecimen, int> tplSpecRepostitory,
@@ -32,7 +33,8 @@ namespace LIMS.Assay.Data
             IRepository<UserTpl, int> userTplRepository,
             IRepository<UserTplSpecimens, int> userTplSpecimenRepository,
             IRepository<Attendance, int> attendanceRepository,
-            IRepository<SelfTpl, int> selfTplRepository
+            IRepository<SelfTpl, int> selfTplRepository,
+            IRepository<UserOrgTpl, int> uOrgTplRepository
             )
         {
             this._tplRepostitory = tplRepostitory;
@@ -45,6 +47,7 @@ namespace LIMS.Assay.Data
             this._userTplSpecimenRepository = userTplSpecimenRepository;
             this._attendanceRepository = attendanceRepository;
             this._selfTplRepository = selfTplRepository;
+            this._uOrgTplRepository=uOrgTplRepository;
         }
 
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCode(string input)
@@ -58,17 +61,45 @@ namespace LIMS.Assay.Data
             return retList;
         }
 
+        // 之前仅模板权限的方法
+        //public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCodeAndTplQx(string input)
+        //{
+        //    long userId = AbpSession.UserId ?? 0;
+        //    var tplItem = this._userTplRepository.GetAll().Where(x => x.UserId == userId).FirstOrDefault();
+        //    var query = _tplRepostitory.GetAll().Where(x => x.OrgCode.StartsWith(input));
+        //    if (tplItem != null)
+        //    {
+        //        string tplStr = tplItem.TplIds;
+        //        string[] tplStrList = tplStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        //        int[] tplIntList = Array.ConvertAll<string, int>(tplStrList, s => int.Parse(s));
+        //        query.Where(x => tplIntList.Contains(x.Id));
+        //    }
+
+        //    var retList = query.Select(x => new Dtos.HtmlSelectDto()
+        //    {
+        //        Key = x.Id.ToString(),
+        //        Value = x.TplName.ToString()
+        //    }).ToList();
+
+        //    return retList;
+        //}
+
+        /// <summary>
+        ///  组织权限与组织模板权限
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCodeAndTplQx(string input)
         {
             long userId = AbpSession.UserId ?? 0;
-            var tplItem = this._userTplRepository.GetAll().Where(x => x.UserId == userId).FirstOrDefault();
-            var query = _tplRepostitory.GetAll().Where(x => x.OrgCode.StartsWith(input));
+            var tplItem = this._uOrgTplRepository.GetAll().Where(x => x.UserId == userId && x.OrgId==input).FirstOrDefault();
+            var query = _tplRepostitory.GetAll().Where(x => x.OrgCode==input).ToList(); 
             if (tplItem != null)
             {
                 string tplStr = tplItem.TplIds;
                 string[] tplStrList = tplStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
                 int[] tplIntList = Array.ConvertAll<string, int>(tplStrList, s => int.Parse(s));
-                query.Where(x => tplIntList.Contains(x.Id));
+                query=query.Where(x => tplIntList.Contains(x.Id)).ToList();
             }
 
             var retList = query.Select(x => new Dtos.HtmlSelectDto()
