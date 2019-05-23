@@ -11,6 +11,8 @@
     <RootNamespace>LIMS</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Dapper" Version="1.60.6" />
+    <PackageReference Include="Mime-Detective" Version="0.0.6-beta5" />
     <PackageReference Include="NPOI" Version="2.4.1" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.Extensions.ToSql" Version="2.0.0-rtm-10002" />
   </ItemGroup>

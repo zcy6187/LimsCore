@@ -1,0 +1,47 @@
+﻿@page
+@model LimsX.Pages.Data.excelOperModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width" />
+    <title>excel操作</title>
+    <link rel="stylesheet" href="~/layuicms/layui/css/layui.css" media="all" />
+    <link rel="stylesheet" href="~/layuicms/css/public.css" media="all" />
+</head>
+<body class="childrenBody">
+    <button id="test" class="layui-btn">一个标准的按钮</button>
+    <div class="layui-container layui-form">
+        <div class="layui-form-item">
+            <label for="" class="layui-form-label">组织</label>
+            <div class="layui-input-block">
+                <input type="text" id="orgTree" lay-filter="tree" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label for="" class="layui-form-label">模板</label>
+            <div class="layui-input-block">
+                <input type="text" name="tplName" id="tplName" class="layui-input" style="position:absolute;z-index:2;width:80%" lay-verify="required" value=""
+                       onkeyup="tplSearch()" autocomplete="off" />
+                <select class="layui-select" typeof="text" id="tplSelect" lay-filter="tplSelect" autocomplete="off" lay-verify="required" lay-search>
+                    <option value="010">layer</option>
+                    <option value="021">form</option>
+                    <option value="0571">layim</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <table id="mainList" lay-filter="newsList"></table>
+    <script type="text/javascript" src="~/layuicms/layui/layui.js"></script>
+    <script type="text/javascript">
+        var treeSelectNodes=@Html.Raw(@Model.OrgNodes);
+    </script>
+    <script type="text/javascript" src="~/pages/excelOper.js"></script>
+</body>
+</html>

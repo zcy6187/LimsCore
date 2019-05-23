@@ -47,7 +47,7 @@ namespace LIMS.Assay.Data
             this._userTplSpecimenRepository = userTplSpecimenRepository;
             this._attendanceRepository = attendanceRepository;
             this._selfTplRepository = selfTplRepository;
-            this._uOrgTplRepository=uOrgTplRepository;
+            this._uOrgTplRepository = uOrgTplRepository;
         }
 
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCode(string input)
@@ -92,14 +92,14 @@ namespace LIMS.Assay.Data
         public List<HtmlSelectDto> GetTemplateHtmlSelectDtosByOrgCodeAndTplQx(string input)
         {
             long userId = AbpSession.UserId ?? 0;
-            var tplItem = this._uOrgTplRepository.GetAll().Where(x => x.UserId == userId && x.OrgId==input).FirstOrDefault();
-            var query = _tplRepostitory.GetAll().Where(x => x.OrgCode==input).ToList(); 
+            var tplItem = this._uOrgTplRepository.GetAll().Where(x => x.UserId == userId && x.OrgId == input).FirstOrDefault();
+            var query = _tplRepostitory.GetAll().Where(x => x.OrgCode == input).ToList();
             if (tplItem != null)
             {
                 string tplStr = tplItem.TplIds;
                 string[] tplStrList = tplStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
                 int[] tplIntList = Array.ConvertAll<string, int>(tplStrList, s => int.Parse(s));
-                query=query.Where(x => tplIntList.Contains(x.Id)).ToList();
+                query = query.Where(x => tplIntList.Contains(x.Id)).ToList();
             }
 
             var retList = query.Select(x => new Dtos.HtmlSelectDto()
@@ -228,13 +228,28 @@ namespace LIMS.Assay.Data
                 Value = x.SpecName.ToString()
             }).ToList();
 
+            var userId = AbpSession.UserId ?? 0;
+
+            var item=this._userTplSpecimenRepository.GetAll().Where(x => x.UserId == userId && x.TplId == input).FirstOrDefault();
+            if (item != null) // 解决权限问题
+            {
+                string[] specIds=item.SpecimenIds.Split(new char[] { ','},StringSplitOptions.RemoveEmptyEntries);
+                if (specIds.Length > 0)
+                {
+                    retList = retList.Where(x => specIds.Contains(x.Key)).ToList();
+                }
+            }
+
             if (flag)
             {
-                retList.Insert(0, new HtmlSelectDto()
+                if (retList.Count > 1)
                 {
-                    Key = "-1",
-                    Value = "全部样品"
-                });
+                    retList.Insert(0, new HtmlSelectDto()
+                    {
+                        Key = "-1",
+                        Value = "全部样品"
+                    });
+                }
             }
 
             return retList;
@@ -264,11 +279,14 @@ namespace LIMS.Assay.Data
 
             if (flag)
             {
-                retList.Insert(0, new HtmlSelectDto()
+                if (retList.Count > 1)
                 {
-                    Key = "-1",
-                    Value = "全部样品"
-                });
+                    retList.Insert(0, new HtmlSelectDto()
+                    {
+                        Key = "-1",
+                        Value = "全部样品"
+                    });
+                }
             }
 
             return retList;
@@ -346,8 +364,8 @@ namespace LIMS.Assay.Data
             var selfTplItem = this._selfTplRepository.GetAll().Single(x => x.Id == selfTplId);
             string tplIds = selfTplItem.tplIds;
             string specIds = selfTplItem.tplSpecIds;
-            string[] tplStrArray=tplIds.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-            int[] tplIntArray = Array.ConvertAll<string,int>(tplStrArray, s => { return int.Parse(s); });
+            string[] tplStrArray = tplIds.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            int[] tplIntArray = Array.ConvertAll<string, int>(tplStrArray, s => { return int.Parse(s); });
             string[] specStrArray = specIds.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
             int[] specIntArray = Array.ConvertAll<string, int>(specStrArray, s => { return int.Parse(s); });
 
@@ -360,7 +378,7 @@ namespace LIMS.Assay.Data
             List<TemplateInfoDto> schemaInfo = new List<TemplateInfoDto>();
             foreach (var tplId in tplIntArray)
             {
-                var tmpTemplate = GetSingleTemplateSchema(tplId,specIntArray);
+                var tmpTemplate = GetSingleTemplateSchema(tplId, specIntArray);
                 schemaInfo.Add(tmpTemplate);
             }
 
@@ -409,7 +427,7 @@ namespace LIMS.Assay.Data
 
         private TemplateInfoDto GetSingleTemplateSchema(int tplId, int[] specIds)
         {
-            var item = _tplRepostitory.Single(x=>x.Id==tplId);
+            var item = _tplRepostitory.Single(x => x.Id == tplId);
             if (item != null)
             {
                 BaseInfoDto tplBaseInfo = new BaseInfoDto()
@@ -473,7 +491,7 @@ namespace LIMS.Assay.Data
             foreach (var tplItem in schema)
             {
                 foreach (var specItem in tplItem.Specimens)
-                {   
+                {
                     foreach (var eleItem in tplItem.Elements)
                     {
                         int tempEleId = eleItem.Id;
@@ -860,7 +878,7 @@ namespace LIMS.Assay.Data
 
         public string GetExcelNameBySelfCode(int selfTplId, DateTime begin, DateTime endTime)
         {
-            var dataInfo = GetDataInfoBySelfCode(selfTplId,begin,endTime);
+            var dataInfo = GetDataInfoBySelfCode(selfTplId, begin, endTime);
             ExcelOper exceler = new ExcelOper();
             string fileName = exceler.CreateSelfCodeSearchExcel(dataInfo);
             if (string.IsNullOrEmpty(fileName))

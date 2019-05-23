@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LearnWebApi.Controllers
 {
+    [Produces("application/json")]
+    [Consumes("application/json", "multipart/form-data")]//此处为新增
     [Route("api/[controller]")]
     [ApiController]
     public class ValuesController : ControllerBase
@@ -24,11 +26,7 @@ namespace LearnWebApi.Controllers
             return "value";
         }
 
-        // POST api/values
-        [HttpPost]
-        public void Post([FromBody] string value)
-        {
-        }
+      
 
         // PUT api/values/5
         [HttpPut("{id}")]

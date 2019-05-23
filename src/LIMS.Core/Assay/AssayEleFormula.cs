@@ -28,10 +28,13 @@ namespace LIMS.Assay
     }
 
     [Table("assay_const")]
-    public class AssayConst : Entity
+    public class AssayConst : Entity,ISoftDelete
     {
-        public int consVal { get; set; }
-        public string pramName { get; set; }
+        public double constVal { get; set; }
+        public string cType { get; set; }
         public string intro { get; set; }
+        public long operatorId { get; set; }
+        public DateTime lastModifyTime { get; set; }
+        public bool IsDeleted { get; set; }
     }
 }

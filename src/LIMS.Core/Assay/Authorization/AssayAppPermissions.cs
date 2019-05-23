@@ -33,6 +33,10 @@ namespace LIMS.Assay.Authorization
         public const string AssayProcess = "Pages.Process";
         public const string ProcessInstrument = "Pages.Process.Instrument";
         public const string ProcessFormula = "Pages.Process.Formula";
+        public const string ProcessConst = "Pages.Process.Const";
+
+        public const string AssayDetector = "Pages.DetectCenter";
+        public const string DetectExcelImport = "Pages.DetectCenter.ExcelImport";
 
 
         public const string Statistic = "Pages.Statistic";

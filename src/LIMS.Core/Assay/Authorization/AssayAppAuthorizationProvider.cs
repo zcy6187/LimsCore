@@ -44,6 +44,11 @@ namespace LIMS.Assay.Authorization
                L(AssayAppPermissions.AssayProcess),
                L(AssayAppPermissions.AssayProcess));
             pageStatistic.CreateChildPermission(AssayAppPermissions.ProcessFormula, L(AssayAppPermissions.ProcessFormula));
+            pageStatistic.CreateChildPermission(AssayAppPermissions.ProcessConst, L(AssayAppPermissions.ProcessConst));
+
+            var detectCenter = context.CreatePermission(AssayAppPermissions.AssayDetector,L(AssayAppPermissions.AssayDetector),L(AssayAppPermissions.AssayDetector));
+            detectCenter.CreateChildPermission(AssayAppPermissions.DetectExcelImport,L(AssayAppPermissions.DetectExcelImport));
+
         }
 
         private static ILocalizableString L(string name)

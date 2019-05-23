@@ -16,16 +16,20 @@ namespace LIMS.Assay.Base
     {
         private IRepository<AssayEleFormula, int> _eleFormulaRep;
         private IRepository<AssayFormulaPram, int> _formulaPramRep;
+        private IRepository<AssayConst, int> _constRep;
 
-        public Assay_Formula(IRepository<AssayEleFormula, int> eleFormulaRep, IRepository<AssayFormulaPram, int> formulaPramRep)
+        public Assay_Formula(IRepository<AssayEleFormula, int> eleFormulaRep,
+            IRepository<AssayFormulaPram, int> formulaPramRep,
+            IRepository<AssayConst, int> constRep)
         {
             this._eleFormulaRep = eleFormulaRep;
             this._formulaPramRep = formulaPramRep;
+            this._constRep = constRep;
         }
 
         public HtmlDataOperRetDto AddFormulaById(int input, CreateFormulaDto formula)
         {
-            int rowCount=this._eleFormulaRep.GetAll().Where(x => x.eleId == input && x.name == formula.name).Count();
+            int rowCount = this._eleFormulaRep.GetAll().Where(x => x.eleId == input && x.name == formula.name).Count();
             if (rowCount > 0)
             {
                 return new HtmlDataOperRetDto()
@@ -36,14 +40,14 @@ namespace LIMS.Assay.Base
             }
             string formulaStr = formula.formulaExp;
             // 处理特殊字符，转小写
-            formulaStr=formulaStr.Replace('）',')');
-            formulaStr=formulaStr.Replace('（', '(');
+            formulaStr = formulaStr.Replace('）', ')');
+            formulaStr = formulaStr.Replace('（', '(');
             formulaStr = formulaStr.ToLower();
             formulaStr = formulaStr.Replace(" ", "");
 
             // 解决mv/c这种匹配问题
-            string expFromat = "([mvc]\\d *){ 2,}";
-            var expMatch=Regex.Matches(expFromat,formulaStr);
+            string expFromat = "([tmvc]\\d *){ 2,}";
+            var expMatch = Regex.Matches(expFromat, formulaStr);
             if (expMatch.Count > 0)
             {
                 return new HtmlDataOperRetDto()
@@ -57,17 +61,19 @@ namespace LIMS.Assay.Base
             string mPattern = "m[0-9]*";
             string vPattern = "v[0-9]*";
             string cPattern = "c[0-9]*";
+            string tPattern = "t[0-9]*";
 
             // 参数替换成常数99，判断是否是正常的四则表达式
-            string tempFormula = Regex.Replace(formulaStr,mPattern,"99");
+            string tempFormula = Regex.Replace(formulaStr, mPattern, "99");
             tempFormula = Regex.Replace(tempFormula, vPattern, "99");
             tempFormula = Regex.Replace(tempFormula, cPattern, "99");
+            tempFormula = Regex.Replace(tempFormula, tPattern, "99");
 
             if (CheckExpressionValid(tempFormula))
             {
                 // 提取参数
                 List<string> pramList = new List<string>();
-                var mMatches=Regex.Matches(formulaStr, mPattern);
+                var mMatches = Regex.Matches(formulaStr, mPattern);
                 foreach (var item in mMatches)
                 {
                     pramList.Add(item.ToString());
@@ -82,16 +88,21 @@ namespace LIMS.Assay.Base
                 {
                     pramList.Add(item.ToString());
                 }
+                var tMatch = Regex.Matches(formulaStr, tPattern);
+                foreach (var item in tMatch)
+                {
+                    pramList.Add(item.ToString());
+                }
 
-                
-                AssayEleFormula tmpFormula=formula.MapTo<AssayEleFormula>();
+
+                AssayEleFormula tmpFormula = formula.MapTo<AssayEleFormula>();
                 tmpFormula.formulaExp = formulaStr;
                 tmpFormula.operatorId = AbpSession.UserId ?? 0;
                 tmpFormula.IsDeleted = false;
                 tmpFormula.lastModifyTime = DateTime.Now;
                 tmpFormula.eleId = input;
-                int tmpId=_eleFormulaRep.InsertAndGetId(tmpFormula);
-                InserPrams(tmpId,pramList);
+                int tmpId = _eleFormulaRep.InsertAndGetId(tmpFormula);
+                InserPrams(tmpId, pramList);
 
                 return
                     new HtmlDataOperRetDto()
@@ -108,12 +119,12 @@ namespace LIMS.Assay.Base
                         Code = -1,
                         Message = "该公式不合法！"
                     };
-            }            
+            }
         }
 
         public HtmlDataOperRetDto UpdateFormulaById(int input, CreateFormulaDto formula)
         {
-            var oldItem=_eleFormulaRep.Single(x => x.Id == input);
+            var oldItem = _eleFormulaRep.Single(x => x.Id == input);
             if (oldItem == null)
             {
                 return
@@ -157,11 +168,13 @@ namespace LIMS.Assay.Base
             string mPattern = "m\\d+";
             string vPattern = "v\\d+";
             string cPattern = "c\\d+";
+            string tPattern = "t\\d+";
 
             // 参数替换成常数99，判断是否是正常的四则表达式
             string tempFormula = Regex.Replace(formulaStr, mPattern, "99");
             tempFormula = Regex.Replace(tempFormula, vPattern, "99");
             tempFormula = Regex.Replace(tempFormula, cPattern, "99");
+            tempFormula = Regex.Replace(tempFormula, tPattern, "99");
 
             if (CheckExpressionValid(tempFormula))
             {
@@ -182,6 +195,12 @@ namespace LIMS.Assay.Base
                 {
                     pramList.Add(item.ToString());
                 }
+                var tMatch = Regex.Matches(formulaStr, tPattern);
+                foreach (var item in tMatch)
+                {
+                    pramList.Add(item.ToString());
+                }
+
                 oldItem.name = formula.name;
                 oldItem.formulaExp = formulaStr;
                 oldItem.operatorId = AbpSession.UserId ?? 0;
@@ -224,7 +243,7 @@ namespace LIMS.Assay.Base
 
         private void UpdatePrams(int formulaId, List<string> pramList)
         {
-            var items=_formulaPramRep.GetAll().Where(x => x.formulaId == formulaId);
+            var items = _formulaPramRep.GetAll().Where(x => x.formulaId == formulaId);
             foreach (var item in items)
             {
                 _formulaPramRep.Delete(item);
@@ -252,7 +271,7 @@ namespace LIMS.Assay.Base
             formulaItem.IsDeleted = true;
             this._eleFormulaRep.Update(formulaItem);
 
-            var pramItems=this._formulaPramRep.GetAll().Where(x => x.formulaId == input);
+            var pramItems = this._formulaPramRep.GetAll().Where(x => x.formulaId == input);
             foreach (var pram in pramItems)
             {
                 this._formulaPramRep.Delete(pram);
@@ -268,7 +287,7 @@ namespace LIMS.Assay.Base
 
         public List<AssayEleFormula> GetFormulaByEleId(int input)
         {
-            var formulaList=this._eleFormulaRep.GetAll().Where(x => x.eleId == input).ToList();
+            var formulaList = this._eleFormulaRep.GetAll().Where(x => x.eleId == input).ToList();
             return formulaList;
         }
 
@@ -276,6 +295,66 @@ namespace LIMS.Assay.Base
         {
             var pramList = this._formulaPramRep.GetAll().Where(x => x.formulaId == input).ToList();
             return pramList;
+        }
+
+
+        // 删除常数
+        public HtmlDataOperRetDto DeleteConstById(int input)
+        {
+            var constItem = this._constRep.Single(x => x.Id == input);
+            constItem.IsDeleted = true;
+            this._constRep.Update(constItem);
+            return new HtmlDataOperRetDto()
+            {
+                Code = 1,
+                Message = "操作成功！"
+            };
+        }
+        public HtmlDataOperRetDto AddConst(CreateConstDto input)
+        {
+            AssayConst item = new AssayConst();
+            item.constVal = input.constVal;
+            item.cType = input.cType;
+            item.intro = input.intro;
+            item.operatorId = AbpSession.UserId ?? 0;
+            item.lastModifyTime = DateTime.Now;
+
+            this._constRep.Insert(item);
+            return new HtmlDataOperRetDto()
+            {
+                Code = 1,
+                Message = "操作成功！"
+            };
+
+        }
+        public HtmlDataOperRetDto EditConst(CreateConstDto input, int inputId)
+        {
+            var constItem = this._constRep.Single(x => x.Id == inputId);
+            constItem.intro = input.intro;
+            constItem.operatorId = AbpSession.UserId ?? 0;
+            constItem.constVal = input.constVal;
+            constItem.cType = input.cType;
+            constItem.lastModifyTime = DateTime.Now;
+
+            this._constRep.Update(constItem);
+            return new HtmlDataOperRetDto()
+            {
+                Code = 1,
+                Message = "操作成功！"
+            };
+        }
+        public List<CreateConstDto> GetAllConst()
+        {
+            var constItems = this._constRep.GetAll().Select(x => new CreateConstDto()
+            {
+                id = x.Id,
+                constVal = x.constVal,
+                cType = x.cType,
+                intro = x.intro,
+                operatorId = x.operatorId
+            }).OrderByDescending(x=>x.id).ToList();
+
+            return constItems;
         }
     }
 }

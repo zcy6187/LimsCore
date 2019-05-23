@@ -50,6 +50,10 @@ namespace LIMS.Assay.Data
                     int[] eleIdIntArray = Array.ConvertAll<string, int>(eleIdArray, s => int.Parse(s));
                     query = query.Where(x => eleIdIntArray.Contains(x.tplSpecId));
                 }
+                else
+                {
+
+                }
             }
             if (flag < 3)
             {
