@@ -153,7 +153,7 @@ namespace LIMS.Assay.Base
             formulaStr = formulaStr.Replace(" ", "");
 
             // 解决mv/c这种匹配问题
-            string expFromat = "([mvc]\\d *){ 2,}";
+            string expFromat = "([tmvc]\\d *){ 2,}";
             var expMatch = Regex.Matches(expFromat, formulaStr);
             if (expMatch.Count > 0)
             {
@@ -165,10 +165,10 @@ namespace LIMS.Assay.Base
             }
 
             // 简单的匹配
-            string mPattern = "m\\d+";
-            string vPattern = "v\\d+";
-            string cPattern = "c\\d+";
-            string tPattern = "t\\d+";
+            string mPattern = "m\\d*";
+            string vPattern = "v\\d*";
+            string cPattern = "c\\d*";
+            string tPattern = "t\\d*";
 
             // 参数替换成常数99，判断是否是正常的四则表达式
             string tempFormula = Regex.Replace(formulaStr, mPattern, "99");

@@ -6,3 +6,4 @@ SELECT * FROM dbo.assay_MainSubCode
 SELECT * FROM dbo.assay_FhMainCode
 
 SELECT MAX(CAST(SelfCode AS INT))+1 FROM dbo.assay_MaterialPrintData WHERE orgname='综合服务部' AND printtime>DateName(year,GetDate()) AND IsDeleted=0
+

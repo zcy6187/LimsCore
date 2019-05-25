@@ -8,6 +8,7 @@ namespace LIMS.DetectCenter
 {
     public interface ICenterApp
     {
-        Dtos.HtmlDataOperRetDto UploadFile([FromForm]CreateMediaDto input);
+        ImportRetInfoDto UploadFile([FromForm]CreateMediaDto input);
+        string DownLoadExcelBySpecId(int input);
     }
 }

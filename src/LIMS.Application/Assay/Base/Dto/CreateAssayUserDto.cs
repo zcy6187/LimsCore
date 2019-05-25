@@ -9,5 +9,7 @@ namespace LIMS.Assay.Base.Dto
     public class CreateAssayUserDto
     {
         public string UserName { get; set; }
+        public string OrgCode { get; set; }
+        public string OrgName { get; set; }
     }
 }

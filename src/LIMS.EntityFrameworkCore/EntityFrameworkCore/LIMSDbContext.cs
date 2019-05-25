@@ -40,7 +40,10 @@ namespace LIMS.EntityFrameworkCore
         public DbSet<Assay.AssayConst> FormulaConst { get; set; }
         public DbSet<Assay.UserOrg> UserOrgs { get; set; }
         public DbSet<Assay.UserOrgTpl> UserOrgTpls { get; set; }
-
+        public DbSet<MaterialPrintData> MaterialPrintData { get; set; }
+        public DbSet<DetectMainInfo> DetectMainInfo { get; set; }
+        public DbSet<DetectMainInfoItems> DetectMainInfoItems { get; set; }
+        public DbSet<DuplicationInfoItems> DuplicationInfoItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -102,6 +105,18 @@ namespace LIMS.EntityFrameworkCore
 
             modelBuilder.Entity<Assay.UserOrgTpl>().Property(x => x.IsDeleted)
               .HasDefaultValue(0);
+
+            modelBuilder.Entity<Assay.MaterialPrintData>().Property(x => x.IsDeleted)
+              .HasDefaultValue(0);
+
+            modelBuilder.Entity<Assay.DetectMainInfo>().Property(x => x.IsDeleted)
+              .HasDefaultValue(0);
+
+            modelBuilder.Entity<Assay.DetectMainInfoItems>().Property(x => x.IsDeleted)
+             .HasDefaultValue(0);
+
+            modelBuilder.Entity<Assay.DuplicationInfoItems>().Property(x => x.IsDeleted)
+            .HasDefaultValue(0);
 
             modelBuilder.Entity<V_UserTpl>(entity =>
             {

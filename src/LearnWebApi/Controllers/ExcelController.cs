@@ -15,7 +15,6 @@ namespace LearnWebApi.Controllers
         public FileResult GetExcel(string fileName)
         {
             string filePath = "D:\\Ftp\\www\\Excels\\"+fileName;
-            //string filePath = "D:\\" + fileName+".xls";
 
             using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {

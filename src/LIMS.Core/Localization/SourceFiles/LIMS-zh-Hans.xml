@@ -21,9 +21,9 @@
     <text name="Pages.AssayInput.XySignDataInput" value="锌业签到录入" />
 
     <text name="Pages.AssaySearch" value="化验查询" />
-    <text name="Pages.AssaySearch.SimpleSearch" value="横列查询" />
+    <text name="Pages.AssaySearch.SimpleSearch" value="帐套单表查询" />
     <text name="Pages.AssaySearch.UserMultiSearch" value="多表查询" />
-    <text name="Pages.AssaySearch.UserSingleTableSearch" value="单表横列查询" />
+    <text name="Pages.AssaySearch.UserSingleTableSearch" value="单表查询" />
     <text name="Pages.AssaySearch.ZtMultiSearch" value="帐套多表查询" />
     <text name="Pages.AssaySearch.SelfTplSearch" value="自定义拼接查询"/>
 

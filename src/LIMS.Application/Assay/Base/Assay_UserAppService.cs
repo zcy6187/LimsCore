@@ -55,28 +55,18 @@ namespace LIMS.Assay.Base
 
         public string Add(CreateAssayUserDto input)
         {
-            string orgCode = "00010002";
-            string orgName = "股份";
 
-            long loginId=AbpSession.UserId??0;
-            var userZt=this._userZtRep.GetAll().Where(x => x.UserId == loginId).FirstOrDefault();
-            if (userZt != null)
-            {
-                orgCode = userZt.ZtCode;
-                orgName = GetZtMc(orgCode);
-            }
-
-            int itemCount = _repository.GetAll().Where(x => x.UserName == input.UserName && !x.IsDeleted && x.OrgCode == orgCode).Count();
+            int itemCount = _repository.GetAll().Where(x => x.UserName == input.UserName && !x.IsDeleted && x.OrgCode == input.OrgCode).Count();
             if (itemCount > 0)
             {
                 return "该名称已存在！";
             }
 
-            var entity = input.MapTo<AssayUser>();
-
-            entity.OrgCode = orgCode;
-            entity.OrgName = orgName;
-            _repository.InsertAsync(entity);
+            AssayUser tmpUser = new AssayUser();
+            tmpUser.UserName = input.UserName;
+            tmpUser.OrgCode = input.OrgCode;
+            tmpUser.OrgName = input.OrgName;
+            _repository.InsertAsync(tmpUser);
 
             return "添加成功!";
         }
@@ -90,16 +80,7 @@ namespace LIMS.Assay.Base
 
         public string Update(EditAssayUserDto input)
         {
-            string orgCode = "00010002";
-
-            long loginId = AbpSession.UserId ?? 0;
-            var userZt = this._userZtRep.GetAll().Where(x => x.UserId == loginId).FirstOrDefault();
-            if (userZt != null)
-            {
-                orgCode = userZt.ZtCode;
-            }
-
-            int itemCount = _repository.GetAll().Where(x => x.UserName == input.UserName && !x.IsDeleted && x.OrgCode == orgCode && x.Id!=input.Id).Count();
+            int itemCount = _repository.GetAll().Where(x => x.UserName == input.UserName && !x.IsDeleted && x.OrgCode ==input.OrgCode  && x.Id!=input.Id).Count();
             if (itemCount > 0)
             {
                 return "该名称已存在！";
@@ -117,7 +98,8 @@ namespace LIMS.Assay.Base
             long loginId = AbpSession.UserId ?? 0;
             var userZtCode = this._userZtRep.GetAll().Where(x => x.UserId == loginId).Select(x=>x.ZtCode).ToArray();
 
-            var list = _repository.GetAll().Where(x => !x.IsDeleted && userZtCode.Contains(x.OrgCode)).Select(x => new Dtos.HtmlSelectDto()
+            var ztlist = _repository.GetAll().Where(x => !x.IsDeleted && userZtCode.Contains(x.OrgCode)).OrderByDescending(x => x.Id).ToList();
+            var list=ztlist.Select(x => new Dtos.HtmlSelectDto()
             {
                 Key = x.Id.ToString(),
                 Value = x.UserName
