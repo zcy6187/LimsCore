@@ -1,28 +1,31 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+using Abp.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LIMS.Web.Host.Controllers
 {
-    [Consumes("application/json", "multipart/form-data")]//此处为新增
-    [Route("api/[controller]")]
-    [ApiController]
-    public class FileController : Controller
+    public class FileController : AbpController
     {
-        public IActionResult Index()
+        private readonly IHostingEnvironment _hostingEnvironment;
+
+        public FileController(IHostingEnvironment hostingEnvironment)
         {
-            return View();
+            this._hostingEnvironment = hostingEnvironment;
+        }
+
+        public IActionResult Test()
+        {
+            return new JsonResult("{'ok':123}");
         }
 
         [HttpPost]
-        public IActionResult Upload(IFormFile[] image, string fileName, Guid name)
+        public IActionResult Upload(IFormFile[] file, string fileName, Guid name)
         {
 
-            foreach (var formFile in image)
+            foreach (var formFile in file)
             {
                 if (formFile.Length > 0)
                 {

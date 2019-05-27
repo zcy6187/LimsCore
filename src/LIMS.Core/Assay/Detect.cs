@@ -38,7 +38,6 @@ namespace LIMS.Assay
     [Table("assay_detectMainInfo")]
     public class DetectMainInfo : Entity, ISoftDelete
     {
-        public DateTime createtime { get; set; }
         public int specId { get; set; }
         public string specName { get; set; }
         public long operatorId { get; set; }
@@ -48,6 +47,8 @@ namespace LIMS.Assay
         public string verdor { get; set; }
         public string fhtime { get; set; }
         public bool IsDeleted { get; set; }
+        public DateTime createtime { get; set; }
+        public DateTime modifyTime { get; set; }
     }
 
     [Table("assay_detectDuplicationInfoItems")]
