@@ -10,7 +10,8 @@ namespace LIMS.DetectCenter
     public interface ICenterApp
     {
         // ImportRetInfoDto UploadFile([FromForm]CreateMediaDto input);
-        ImportRetInfoDto UploadFile(string fileName);
+        ImportRetInfoDto UploadFile(string fileName, bool isImport);
         string DownLoadExcelBySpecId(int input);
+
     }
 }

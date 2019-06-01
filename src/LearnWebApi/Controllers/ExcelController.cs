@@ -12,9 +12,11 @@ namespace LearnWebApi.Controllers
     [ApiController]
     public class ExcelController : ControllerBase
     {
+        private string downLoadDir = "D:\\Ftp\\www\\Excels\\";
+
         public FileResult GetExcel(string fileName)
         {
-            string filePath = "D:\\Ftp\\www\\Excels\\"+fileName;
+            string filePath = downLoadDir+fileName;
 
             using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {

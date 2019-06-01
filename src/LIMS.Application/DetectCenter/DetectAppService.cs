@@ -1,10 +1,12 @@
 ﻿using Abp.Domain.Repositories;
+using Abp.Domain.Uow;
 using LIMS.Assay;
 using LIMS.DetectCenter.Dto;
 using LIMS.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MimeDetective.Extensions;
+using NPOI.HPSF;
 using NPOI.HSSF.UserModel;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
@@ -12,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace LIMS.DetectCenter
 {
@@ -25,6 +28,9 @@ namespace LIMS.DetectCenter
         private readonly IRepository<DetectMainInfo, int> _detectMainInfo;
         private readonly IRepository<DetectMainInfoItems, int> _detectMainInfoItems;
         private readonly IRepository<DuplicationInfoItems, int> _detectDuplicationItems;
+        private readonly IRepository<ImportHistory, int> _importHistory;
+        private string uploadDirName = "D:\\Ftp\\www\\upload\\";
+        private string downloadDirName = "D:\\Ftp\\www\\Excels\\";
 
         public DetectAppService(
             IRepository<TplSpecimen, int> specRepository,
@@ -33,7 +39,9 @@ namespace LIMS.DetectCenter
             IRepository<AssayUser, int> assayUserRepostiroy,
             IRepository<MaterialPrintData, int> printRepostiroy,
             IRepository<DetectMainInfo, int> detectMainInfo,
-            IRepository<DetectMainInfoItems, int> detectMainInfoItems
+            IRepository<DetectMainInfoItems, int> detectMainInfoItems,
+            IRepository<ImportHistory, int> importHistory,
+            IRepository<DuplicationInfoItems, int> detectDuplicationItems
             )
         {
             this._specRepository = specRepository;
@@ -43,16 +51,35 @@ namespace LIMS.DetectCenter
             this._printRepostiroy = printRepostiroy;
             this._detectMainInfo = detectMainInfo;
             this._detectMainInfoItems = detectMainInfoItems;
+            this._importHistory = importHistory;
+            this._detectDuplicationItems = detectDuplicationItems;
         }
-
-        public ImportRetInfoDto UploadFile(string fileName)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <param name="isImport">true强制导入，false全部正确后再导入</param>
+        /// <returns></returns>
+        public ImportRetInfoDto UploadFile(string fileName, bool isImport)
         {
             /*状态码、描述、值*/
-            string dir = "D:\\Ftp\\www\\upload";
             string localFileName = Guid.NewGuid().ToString();
             string ext = Path.GetExtension(fileName);
             ImportRetInfoDto retDto = new ImportRetInfoDto();
-            using (var fileStream = new FileStream($"{dir}\\{fileName}", FileMode.Open,FileAccess.Read))
+            // 格式异常
+            List<string> expTitleList = new List<string>();
+            // 存储返回客户端的数据(标题)
+            List<string> titleList = new List<string>();
+            // 存储返回客户端的数据(异常信息)
+            List<List<string>> retList = new List<List<string>>();
+            // 存储正常的代码，写入到数据库中
+            List<List<string>> storeList = new List<List<string>>();
+            int curTplSpecId = 0;
+            string curSpecName = string.Empty;
+
+            var curUserId = AbpSession.UserId ?? 0;
+
+            using (var fileStream = new FileStream($"{this.uploadDirName}\\{fileName}", FileMode.Open, FileAccess.Read))
             {
                 IWorkbook wk;
                 if (ext == ".xlsx" || ext == ".xls")
@@ -68,26 +95,34 @@ namespace LIMS.DetectCenter
                     }
                     ISheet sheet = wk.GetSheetAt(0);
                     IRow row0 = sheet.GetRow(0);
+                    ICell titleCell00 = row0.GetCell(0);
                     ICell titleCell01 = row0.GetCell(1);
-                    string specId = titleCell01.StringCellValue;
+                    string specId = GetCellStringValue(titleCell01);
+                    curSpecName = GetCellStringValue(titleCell00);
                     int specIdInt = -1;
                     int colCount = 0; // 记录列的个数
-
                     if (int.TryParse(specId, out specIdInt))
                     {
+                        curTplSpecId = specIdInt;
                         // 获取所有的样品元素
-                        var eleList = this._elementRepository.GetAll().Where(x => x.SpecId == specIdInt).ToList();
+                        var eleList = this._elementRepository.GetAll().Where(x => x.TplSpecId == specIdInt).ToList();
                         // 获取所有元素
                         IRow row1 = sheet.GetRow(1);
                         // 存储excel的表头-元素、操作员
                         List<string> rowTitleList = new List<string>();
-                        // 标题异常
-                        List<string> expTitleList = new List<string>();
                         // 元素与ID对照List
                         List<TitleElementInfo> eleIdList = new List<TitleElementInfo>();
                         int curEleId = 0;
                         int curEleIndex = 0;
-                        
+
+                        // 非元素列
+                        for (int j = 0; j <= 1; j++)
+                        {
+                            ICell tempCell = row1.GetCell(j);
+                            string tempCellValue = GetCellStringValue(tempCell);
+                            rowTitleList.Add(tempCellValue);
+                        }
+
                         // 提取所有的元素及其与ID的对照关系
                         for (int i = 2; i < 100; i++)
                         {
@@ -97,7 +132,7 @@ namespace LIMS.DetectCenter
                                 colCount = i;
                                 break;
                             }
-                            string tmpCellValue = tmpCell.StringCellValue;
+                            string tmpCellValue = GetCellStringValue(tmpCell);
                             if (!string.IsNullOrEmpty(tmpCellValue))
                             {
                                 rowTitleList.Add(tmpCellValue);
@@ -106,7 +141,7 @@ namespace LIMS.DetectCenter
                                 if (tmpCellValue != "操作员")
                                 {
                                     int splitIndex = tmpCellValue.IndexOf('(');
-                                    string tmpEleValue = string.Empty;
+                                    string tmpEleValue = tmpCellValue;
                                     if (splitIndex > 0)
                                     {
                                         tmpEleValue = tmpCellValue.Substring(0, splitIndex);
@@ -149,7 +184,7 @@ namespace LIMS.DetectCenter
                         if (expTitleList.Count > 0)
                         {
                             retDto.code = 1;
-                            retDto.message = "标题有错误！";
+                            retDto.message = "元素无法匹配！";
                             retDto.expList = expTitleList;
                         }
                         else
@@ -161,20 +196,16 @@ namespace LIMS.DetectCenter
                             DateTime beginTime = endTime.AddDays(-30);
                             // 获取该样品的所有签到信息
                             var attendanceList = this._printRepostiroy.GetAll().Where(x => x.PrintTime > beginTime && x.PrintTime < endTime && x.TplSpecId == specIdInt).ToList();
-
-                            // 存储返回客户端的代码(异常信息)
-                            List<List<string>> retList = new List<List<string>>();
-                            // 存储正常的代码，写入到数据库中
-                            List<List<string>> storeList = new List<List<string>>();
                             // 所有操作员的名称
                             List<string> operNameList = new List<string>();
-                            int nullRowCount=0; //记录连续空行的数目
+                            int nullRowCount = 0; //记录连续空行的数目
                             while (hasRow)
                             {
                                 IRow tmpValRow = sheet.GetRow(rowIndex);
-
+                                // 连续3行为null，则表示已经没有数据
                                 if (tmpValRow == null)
                                 {
+                                    rowIndex++;
                                     nullRowCount++;
                                     if (nullRowCount > 3)
                                     {
@@ -186,7 +217,9 @@ namespace LIMS.DetectCenter
                                         hasRow = true;
                                         continue;
                                     }
+
                                 }
+                                nullRowCount = 0;
                                 // 存储Excel行数据
                                 List<string> rowValList = new List<string>();
                                 // 获取每一行的数据
@@ -196,7 +229,7 @@ namespace LIMS.DetectCenter
                                     string cellValue = string.Empty;
                                     if (tmpValCell != null)
                                     {
-                                        cellValue = tmpValCell.StringCellValue;
+                                        cellValue = GetCellStringValue(tmpValCell);
                                     }
                                     rowValList.Add(cellValue);
                                 }
@@ -227,12 +260,17 @@ namespace LIMS.DetectCenter
                                     if (attenList.Count == 1)
                                     {
                                         retRowList.Add("0");
-                                        retRowList.Add("正常数据");
+                                        retRowList.Add(attenList[0].ScanId);
 
+                                        // 解析数据，插入到正常序列中
                                         string scanIdVal = attenList[0].ScanId;
                                         string mainIdVal = attenList[0].MainScanId;
+                                        string selfCode = attenList[0].SelfCode;
+                                        string printTime = attenList[0].PrintTime.ToString("yyyy-MM-dd HH:mm:ss");
                                         storeRowList.Add(mainIdVal);
                                         storeRowList.Add(scanIdVal);
+                                        storeRowList.Add(selfCode);
+                                        storeRowList.Add(printTime);
                                         // 将正常值写入要存储的队列
                                         foreach (var item in eleIdList)
                                         {
@@ -247,7 +285,7 @@ namespace LIMS.DetectCenter
                                                     storeRowList.Add(tmpValue);
                                                     operNameList.Add(val);
                                                 }
-                                                else
+                                                else // 元素值
                                                 {
                                                     storeRowList.Add(tmpValue);
                                                 }
@@ -256,80 +294,169 @@ namespace LIMS.DetectCenter
                                         storeList.Add(storeRowList);
                                     }
                                 }
-                                foreach (var item in rowValList)
-                                {
-                                    retRowList.Add(item);
-                                }
+                                retRowList.AddRange(rowValList);
                                 retList.Add(retRowList);
+                                rowIndex++;
                             }
 
                             // 获取所有非法的操作员
                             var ztUserList = this._assayUserRepostiroy.GetAll().Where(x => x.OrgCode == "00010005").ToList();
                             var allOperNameList = ztUserList.Select(x => x.UserName).ToList();
+                            operNameList = operNameList.Distinct().ToList();
                             foreach (var item in allOperNameList)
                             {
                                 operNameList.Remove(item);
                             }
                             if (operNameList.Count > 0)
                             {
-                                expTitleList.Add(string.Format("操作员不存在：{0}", string.Join(",", operNameList)));
-                                retDto.code = 2;
-                                retDto.message = "操作人员有错误";
-                                retDto.expList = operNameList;
+                                expTitleList.Add("操作人员不存在： " + string.Join(',', operNameList));
+                            }
+
+                            // 生成表头
+                            titleList.Add("状态码");
+                            titleList.Add("说明");
+                            titleList.AddRange(rowTitleList);
+
+                            // 生成表体
+                            if (retList.Count > 0)
+                            {
+                                retList = retList.OrderByDescending(x => x[0], new ComparerNumberStr()).ToList();
+                                string excelFileName = WriteDataListToLocalExcel(titleList, retList);
+                                retDto.uploadFileName = excelFileName;
                             }
 
                             if (expTitleList.Count == 0)
                             {
-                                List<string> titleList = new List<string>();
-                                titleList.Add("状态码");
-                                titleList.Add("说明");
-                                titleList.AddRange(rowTitleList);
                                 if (storeList.Count == retList.Count) // 一切正常
                                 {
                                     retDto.code = 0;
                                     retDto.message = "导入成功";
-                                    retDto.dataList = retList;
-                                    retDto.dataTitle = titleList;
-
-                                    WriteDataToTb(storeList,int.Parse(specId));
                                 }
                                 else
                                 {
                                     retDto.code = 3;
                                     retDto.message = "存在部分错误";
-                                    retDto.dataList = retList;
-                                    retDto.dataTitle = titleList;
                                 }
                             }
                         }
                     }
                     else
                     {
-                        retDto.code = -2;
-                        retDto.message = "样品编号不存在";
+                        expTitleList.Add("该样品编号不存在：" + specId);
                     }
                 }
                 else
                 {
-                    retDto.code = -1;
-                    retDto.message = "文件类型不支持";
+                    expTitleList.Add(ext + " 文件类型不支持");
                 }
+
+                if (string.IsNullOrEmpty(retDto.message))
+                {
+                    retDto.code = -1;
+                    retDto.message = "部分格式错误";
+                }
+                retDto.expList = expTitleList;
+                retDto.dataList = retList;
+                retDto.dataTitle = titleList;
+
                 fileStream.Close();
             }
+
+            // 记录当前导入的信息
+            ImportHistory history = new ImportHistory();
+            history.createtime = DateTime.Now;
+            history.operatorId = curUserId;
+            history.tplSpecId = curTplSpecId;
+            history.ret = retDto.message;
+            history.retFileName = retDto.uploadFileName;
+            int importHisId = this._importHistory.InsertAndGetId(history);
+
+            // 将数据写入到数据库
+            if (curTplSpecId > 0)
+            {
+                if (isImport || retList.Count == storeList.Count)  // 强制导入，或者全部正确时，将数据写入数据库
+                {
+                    WriteDataToTb(storeList, curTplSpecId, importHisId);
+                }
+
+            }
             return retDto;
+        }
+
+        private string GetCellStringValue(ICell tmpCell)
+        {
+            tmpCell.SetCellType(CellType.String);
+            return tmpCell.StringCellValue;
+        }
+
+        // 将异常数据写入到数据库中
+        private string WriteDataListToLocalExcel(List<string> titleList, List<List<string>> dataList)
+        {
+            HSSFWorkbook workbook = new HSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet();
+            #region 右击文件 属性信息
+            {
+                DocumentSummaryInformation dsi = PropertySetFactory.CreateDocumentSummaryInformation();
+                dsi.Company = "豫光";
+                workbook.DocumentSummaryInformation = dsi;
+
+                SummaryInformation si = PropertySetFactory.CreateSummaryInformation();
+                si.Author = "张承宇"; //填加xls文件作者信息
+                si.ApplicationName = "LIMS"; //填加xls文件创建程序信息
+                si.LastAuthor = "张承宇"; //填加xls文件最后保存者信息
+                si.Comments = "张承宇"; //填加xls文件作者信息
+                si.Title = "化验数据"; //填加xls文件标题信息
+                si.Subject = "化验数据";//填加文件主题信息
+                si.CreateDateTime = System.DateTime.Now;
+                workbook.SummaryInformation = si;
+            }
+            #endregion
+
+            int rowIndex = 0;
+            IRow titleRow = sheet.CreateRow(rowIndex);
+            int colIndex = 0;
+            foreach (var item in titleList)
+            {
+                ICell tmpCell = titleRow.CreateCell(colIndex);
+                tmpCell.SetCellValue(item);
+                colIndex++;
+            }
+            rowIndex++;
+            foreach (var rowList in dataList)
+            {
+                IRow contentRow = sheet.CreateRow(rowIndex);
+                colIndex = 0;
+                foreach (var item in rowList)
+                {
+                    ICell tmpCell = contentRow.CreateCell(colIndex);
+                    tmpCell.SetCellValue(item);
+                    colIndex++;
+                }
+                rowIndex++;
+            }
+
+            string fileName = string.Format("{0}{1}.xls", DateTime.Now.ToString("yyyyMMddHHmm"), Guid.NewGuid().ToString());
+            string filePath = this.downloadDirName + fileName;
+            using (var fs = new FileStream(filePath, FileMode.CreateNew, FileAccess.Write))
+            {
+                workbook.Write(fs);
+            }
+
+            return fileName;
         }
 
         /// <summary>
         /// 将数据写入到数据库中
         /// </summary>
         /// <returns></returns>
-        private bool WriteDataToTb(List<List<string>> dataList, int specId)
+        private bool WriteDataToTb(List<List<string>> dataList, int specId, int hisId)
         {
             List<DuplicationInfoItems> duplicationList = new List<DuplicationInfoItems>();
+            List<DuplicationElements> duplicationEleList = new List<DuplicationElements>();
             List<OperValInfo> operList = new List<OperValInfo>();
             List<string> mainIdList = new List<string>(); // 主Id列表
             List<string> scanIdList = new List<string>(); // 子id列表
-            var userId=AbpSession.UserId ?? 0;
+            var userId = AbpSession.UserId ?? 0;
             var userList = this._assayUserRepostiroy.GetAll().OrderByDescending(x => x.Id);
 
 
@@ -340,17 +467,19 @@ namespace LIMS.DetectCenter
              */
 
             #region 第1步
-            // [mainIdVal,scanIdVal,值]
+            // [mainIdVal,scanIdVal,selfCode,printTime,值]
             //  值以"&#&*"为分隔符（cellType+eleid+值）,-1 操作员，eleId
             foreach (var rowList in dataList)
             {
                 string mainId = rowList[0];
                 string scanId = rowList[1];
+                string selfCode = rowList[2];
+                string printTime = rowList[3];
                 mainIdList.Add(mainId);
                 scanIdList.Add(scanId);
-                
-                
-                for (int i = 2; i < rowList.Count; i++)
+
+
+                for (int i = 4; i < rowList.Count; i++)
                 {
                     string tmpStr = rowList[i];
                     string[] valArray = tmpStr.Split("&#&*", StringSplitOptions.RemoveEmptyEntries);
@@ -361,7 +490,7 @@ namespace LIMS.DetectCenter
                         operItem.eleId = int.Parse(valArray[1]);
                         operItem.cellValIndex = int.Parse(valArray[2]);
                         operItem.operName = valArray[3];
-                        var userItem=userList.Where(x => x.UserName == valArray[3]).FirstOrDefault();
+                        var userItem = userList.Where(x => x.UserName == valArray[3]).FirstOrDefault();
                         if (userItem != null)
                         {
                             operItem.operId = userItem.Id;
@@ -374,20 +503,35 @@ namespace LIMS.DetectCenter
                     }
                     if (valArray[0] == "1") // 元素值
                     {
+                        // 子ID
                         var duplicateItem = new DuplicationInfoItems();
                         duplicateItem.mainScanId = mainId;
                         duplicateItem.scanId = scanId;
-                        duplicateItem.tplSpecId = specId;
-                        duplicateItem.tplEleId = int.Parse(valArray[1]);
-                        duplicateItem.eleValue = valArray[3];
+                        duplicateItem.selfCode = selfCode;
                         duplicateItem.mainId = int.Parse(valArray[2]); // 暂时存储，所在excel中的列,之后替换
-
+                        duplicateItem.modifyTime = DateTime.Now;
+                        duplicateItem.printTime = DateTime.Parse(printTime);
+                        duplicateItem.hisId = hisId;
+                        duplicateItem.operId = userId;
+                        duplicateItem.tplSpecId = specId;
                         duplicationList.Add(duplicateItem);
+                        // 元素
+                        var duplicateEle = new DuplicationElements();
+                        duplicateEle.tplSpecId = specId;
+                        duplicateEle.tplEleId = int.Parse(valArray[1]);
+                        duplicateEle.eleValue = valArray[3];
+                        duplicateEle.desInfo = mainId; // // 暂时存储，主ID
+                        duplicateEle.modifyTime = DateTime.Now;
+                        duplicateEle.modifyUserId = userId;
+                        duplicateEle.modifyUserName = scanId; // 暂时存储，子ID
+                        duplicateEle.duplicateId = int.Parse(valArray[2]); // 暂时存储，所在excel中的列,之后替换
+                        duplicationEleList.Add(duplicateEle);
                     }
                 }
             }
             #endregion
 
+            SqlOper.SqlHelper myDal = new SqlOper.SqlHelper();
             #region 第3步  主条码插入数据库
             // 获取所有mainItems
             // 去除重复值
@@ -408,43 +552,74 @@ namespace LIMS.DetectCenter
             // 将没有主ID的数据插入，生成主ID
             newMainIdList.ForEach(s =>
             {
-                var printItem = printMain.Single(x => x.MainScanId == s);
-                DetectMainInfo mainItem = new DetectMainInfo();
-                mainItem.operatorId = userId;
-                mainItem.specId = specId;
-                mainItem.operatorId = userId;
-                mainItem.mainScanId = s;
-                mainItem.chs = printItem.chs;
-                mainItem.fhtime = printItem.fhtime;
-                mainItem.verdor = printItem.vendor;
-                mainItem.IsDeleted = false;
-                detectMainList.Add(mainItem);
+                var printItem = printMain.FirstOrDefault(x => x.MainScanId == s);
+                if (printItem != null)
+                {
+                    DetectMainInfo mainItem = new DetectMainInfo();
+                    mainItem.operatorId = userId;
+                    mainItem.specId = specId;
+                    mainItem.mainScanId = s;
+                    mainItem.chs = printItem.chs;
+                    mainItem.fhtime = printItem.fhtime;
+                    mainItem.verdor = printItem.vendor;
+                    mainItem.IsDeleted = false;
+                    mainItem.createtime = DateTime.Now;
+                    mainItem.modifyTime = DateTime.Now;
+                    mainItem.fhId = -1;
+                    mainItem.hisId = hisId;
+                    detectMainList.Add(mainItem);
+                }
             });
-
-            detectMainList.ForEach(s => {
-                this._detectMainInfo.Insert(s);
-            });
+            // 主条码插入到数据库中
+            myDal.WriteDetectMainsToDb(detectMainList);
             #endregion
 
             #region 第4步 修改子id数据
+            // 去除重复的子条码
+            var newScanIdList = scanIdList.Distinct().ToList();
+            duplicationList=duplicationList.Distinct(new ComparerDuplication()).ToList(); // 去重
+            var repeateScanIds = this._detectDuplicationItems.GetAll().Where(x => newScanIdList.Contains(x.scanId) && x.tplSpecId==specId).Select(x=>x.scanId).ToList();
+            duplicationList.RemoveAll(x=>repeateScanIds.Contains( x.scanId));
             // 获取主ID
-            var curMainItems = this._detectMainInfo.GetAll().Where(x => distinctMainIdList.Contains(x.mainScanId)).ToList();
-            // 遍历子ID，补充信息
-            duplicationList.ForEach(item =>
+            var curMainItems = this._detectMainInfo.GetAll().Where(x => distinctMainIdList.Contains(x.mainScanId) && x.specId==specId).ToList();
+            // 遍历主ID，将主ID的信息更新到子ID信息中
+            curMainItems.ForEach(item =>
             {
-                var operItem = operList.Where(x => x.eleId == item.tplEleId && x.cellValIndex == item.mainId).FirstOrDefault();
+                duplicationList.Where(x => x.mainScanId == item.mainScanId).ToList().ForEach(subItem =>
+                {
+                    subItem.mainId = item.Id;
+                });
+            });
+            //// 遍历子ID，补充信息
+            //duplicationList.ForEach(item =>
+            //{
+            //    var mainItem = curMainItems.Where(x => x.mainScanId == item.mainScanId).First();
+            //    item.mainId = mainItem.Id;
+            //});
+
+            // 将子条码写入到数据库中
+            myDal.WriteDetectDuplicationToDb(duplicationList);
+            #endregion
+
+            #region 第5步 修改元素数据
+            // 从数据库中获取所有的平行样
+            var allDuplicateItems = this._detectDuplicationItems.GetAll().Where(x => newScanIdList.Contains(x.scanId) && x.tplSpecId == specId).ToList();
+            // 填充元素其它信息
+            duplicationEleList.ForEach(item =>
+            {
+                var operItem = operList.Where(x => x.eleId == item.tplEleId && x.cellValIndex == item.duplicateId && x.scanId == item.modifyUserName).FirstOrDefault();
                 if (operItem != null)
                 {
                     item.operId = operItem.operId;
                     item.operName = operItem.operName;
                 }
-                var mainItem = curMainItems.Where(x => x.mainScanId == item.mainScanId).First();
-                item.mainId = mainItem.Id;
-                this._detectDuplicationItems.Insert(item);
+                var curDuplicateItem=allDuplicateItems.Where(x => x.scanId ==item.modifyUserName).First();
+                item.duplicateId = curDuplicateItem.Id;
             });
+            myDal.WriteDuplicationElementsToDb(duplicationEleList);
             #endregion
 
-            return false;
+            return true;
         }
 
         public string DownLoadExcelBySpecId(int input)
@@ -452,7 +627,7 @@ namespace LIMS.DetectCenter
             var eleList = this._elementRepository.GetAll().Where(x => x.TplSpecId == input).ToList();
             var firstItem = eleList[0];
             string specName = firstItem.SpecName;
-            string specId = firstItem.SpecId.ToString();
+            string specId = firstItem.TplSpecId.ToString();
             List<string> titleList = new List<string>();
             titleList.Add("编号");
             titleList.Add("条码");
@@ -517,5 +692,26 @@ namespace LIMS.DetectCenter
         public int operId { get; set; }
         public string operName { get; set; }
         public int cellValIndex { get; set; }
+    }
+
+    class ComparerNumberStr : IComparer<String>
+    {
+        public int Compare(String x, String y)
+        {
+            return int.Parse(x) - int.Parse(y);
+        }
+    }
+
+    class ComparerDuplication: IEqualityComparer<DuplicationInfoItems>
+    {
+        bool IEqualityComparer<DuplicationInfoItems>.Equals(DuplicationInfoItems x, DuplicationInfoItems y)
+        {
+            return x.scanId == y.scanId;
+        }
+
+        int IEqualityComparer<DuplicationInfoItems>.GetHashCode(DuplicationInfoItems obj)
+        {
+            return obj.Id;
+        }
     }
 }

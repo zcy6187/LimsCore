@@ -44,6 +44,8 @@ namespace LIMS.EntityFrameworkCore
         public DbSet<DetectMainInfo> DetectMainInfo { get; set; }
         public DbSet<DetectMainInfoItems> DetectMainInfoItems { get; set; }
         public DbSet<DuplicationInfoItems> DuplicationInfoItems { get; set; }
+        public DbSet<DuplicationElements> DuplicationElements { get; set; }
+        public DbSet<ImportHistory> ImporHistory { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

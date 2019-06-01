@@ -28,7 +28,7 @@ namespace LIMS.Assay
         public string Description { get; set; }
         public string ScanId { get; set; }
         public bool IsDeleted { get; set; }
-        public int Flag { get; set; }
+        public string Flag { get; set; }
         public string MainScanId { get; set; }
         public string chs { get; set; }
         public string vendor { get; set; }
@@ -49,16 +49,31 @@ namespace LIMS.Assay
         public bool IsDeleted { get; set; }
         public DateTime createtime { get; set; }
         public DateTime modifyTime { get; set; }
+        public int hisId { get; set; }
     }
 
-    [Table("assay_detectDuplicationInfoItems")]
-    public class DuplicationInfoItems: Entity, ISoftDelete
+    [Table("assay_detectDuplicationItems")]
+    public class DuplicationInfoItems : Entity, ISoftDelete
     {
         public int mainId { get; set; }
+        public int tplSpecId { get; set; }
         public string mainScanId { get; set; }
         public string scanId { get; set; }
+        public string selfCode { get; set; }
+        public string otherCode { get; set; }
+        public long operId { get; set; }
+        public string operName { get; set; }
+        public DateTime modifyTime { get; set; }
+        public DateTime printTime { get; set; }
+        public bool IsDeleted { get; set; }
+        public int hisId { get; set; }
+    }
+
+    [Table("assay_detectDuplicationElements")]
+    public class DuplicationElements : Entity, ISoftDelete
+    {
+        public int duplicateId { get; set; }
         public int tplSpecId { get; set; }
-        public string tplSpecName { get; set; }
         public int tplEleId { get; set; }
         public string tplEleName { get; set; }
         public string eleValue { get; set; }
@@ -68,6 +83,7 @@ namespace LIMS.Assay
         public long modifyUserId { get; set; }
         public string modifyUserName { get; set; }
         public bool IsDeleted { get; set; }
+        public string desInfo { get; set; }
     }
 
     [Table("assay_detectMainInfoItems")]
@@ -86,5 +102,17 @@ namespace LIMS.Assay
         public long modifyUserId { get; set; }
         public string modifyUserName { get; set; }
         public bool IsDeleted { get; set; }
+        public string desInfo { get; set; }
+    }
+
+    [Table("assay_detectImport")]
+    public class ImportHistory : Entity
+    {
+        public DateTime createtime { get; set; }
+        public int tplSpecId { get; set; }
+        public string tplSpecName { get; set; }
+        public long operatorId { get; set; }
+        public string ret { get; set; }
+        public string retFileName { get; set; }
     }
 }
