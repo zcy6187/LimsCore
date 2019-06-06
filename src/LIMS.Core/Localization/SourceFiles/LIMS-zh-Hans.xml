@@ -29,6 +29,8 @@
 
     <text name="Pages.DetectCenter" value="检测中心" />
     <text name="Pages.DetectCenter.ExcelImport" value="Excel数据录入" />
+    <text name="Pages.DetectCenter.DuplicationSearch" value="平行样查询"/>
+    <text name="Pages.DetectCenter.ModificationSearch" value="修正样查询"/>
 
     <text name="Pages.Process" value="过程管理" />
     <text name="Pages.Process.Instrument" value="仪器管理" />

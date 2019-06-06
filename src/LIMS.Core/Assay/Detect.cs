@@ -86,6 +86,24 @@ namespace LIMS.Assay
         public string desInfo { get; set; }
     }
 
+    [Table("assay_detectDuplicationModifyElements")]
+    public class DuplicationModifyElements : Entity, ISoftDelete
+    {
+        public int duplicateId { get; set; }
+        public int tplSpecId { get; set; }
+        public int tplEleId { get; set; }
+        public string tplEleName { get; set; }
+        public string eleValue { get; set; }
+        public int operId { get; set; }
+        public string operName { get; set; }
+        public DateTime modifyTime { get; set; }
+        public long modifyUserId { get; set; }
+        public string modifyUserName { get; set; }
+        public bool IsDeleted { get; set; }
+        public string desInfo { get; set; }
+        public int flag { get; set; }
+    }
+
     [Table("assay_detectMainInfoItems")]
     public class DetectMainInfoItems : Entity, ISoftDelete
     {

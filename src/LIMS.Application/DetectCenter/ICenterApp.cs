@@ -12,6 +12,8 @@ namespace LIMS.DetectCenter
         // ImportRetInfoDto UploadFile([FromForm]CreateMediaDto input);
         ImportRetInfoDto UploadFile(string fileName, bool isImport);
         string DownLoadExcelBySpecId(int input);
-
+        TableInfoDto SearchDuplicateItems(int tplSpecId, DateTime beginTime, DateTime endTime,string searchId, int dateTyped);
+        ModifyTableInfoDto SearchDuplicateModificationItems(int tplSpecId, DateTime beginTime, DateTime endTime, string searchId, int dateType);
+        List<ModifyEditInfoDto> GetSingleModifyInfo(int dupId);
     }
 }

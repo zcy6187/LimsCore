@@ -37,6 +37,8 @@ namespace LIMS.Assay.Authorization
 
         public const string AssayDetector = "Pages.DetectCenter";
         public const string DetectExcelImport = "Pages.DetectCenter.ExcelImport";
+        public const string DetectDuplicationSearch = "Pages.DetectCenter.DuplicationSearch";
+        public const string DetectModificationSearch = "Pages.DetectCenter.ModificationSearch";
 
 
         public const string Statistic = "Pages.Statistic";

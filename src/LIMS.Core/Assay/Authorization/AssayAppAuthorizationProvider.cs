@@ -48,6 +48,8 @@ namespace LIMS.Assay.Authorization
 
             var detectCenter = context.CreatePermission(AssayAppPermissions.AssayDetector,L(AssayAppPermissions.AssayDetector),L(AssayAppPermissions.AssayDetector));
             detectCenter.CreateChildPermission(AssayAppPermissions.DetectExcelImport,L(AssayAppPermissions.DetectExcelImport));
+            detectCenter.CreateChildPermission(AssayAppPermissions.DetectDuplicationSearch,L(AssayAppPermissions.DetectDuplicationSearch));
+            detectCenter.CreateChildPermission(AssayAppPermissions.DetectModificationSearch,L(AssayAppPermissions.DetectModificationSearch));
 
         }
 

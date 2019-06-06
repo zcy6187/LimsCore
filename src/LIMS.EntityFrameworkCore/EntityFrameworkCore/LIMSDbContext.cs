@@ -46,6 +46,7 @@ namespace LIMS.EntityFrameworkCore
         public DbSet<DuplicationInfoItems> DuplicationInfoItems { get; set; }
         public DbSet<DuplicationElements> DuplicationElements { get; set; }
         public DbSet<ImportHistory> ImporHistory { get; set; }
+        public DbSet<DuplicationModifyElements> DuplicationModifyElements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -118,6 +119,9 @@ namespace LIMS.EntityFrameworkCore
              .HasDefaultValue(0);
 
             modelBuilder.Entity<Assay.DuplicationInfoItems>().Property(x => x.IsDeleted)
+            .HasDefaultValue(0);
+
+            modelBuilder.Entity<Assay.DuplicationModifyElements>().Property(x => x.IsDeleted)
             .HasDefaultValue(0);
 
             modelBuilder.Entity<V_UserTpl>(entity =>
