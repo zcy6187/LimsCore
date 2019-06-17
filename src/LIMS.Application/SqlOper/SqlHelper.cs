@@ -111,6 +111,7 @@ namespace LIMS.SqlOper
             string baseSql = @"insert into assay_detectDuplicationElements (
                 [duplicateId],
                 [tplSpecId],
+
                 [tplEleId],
                 [tplEleName],
                 [eleValue],
@@ -144,7 +145,7 @@ namespace LIMS.SqlOper
             BulkInsert(sqlList);
         }
 
-        private bool BulkInsert(List<string> sqlList)
+        public bool BulkInsert(List<string> sqlList)
         {
             using (System.Data.SqlClient.SqlConnection conn = new System.Data.SqlClient.SqlConnection(this._connStr))
             {

@@ -14,5 +14,6 @@ namespace LIMS.Assay.Base
         Task Delete(int inputId);
         string Add(CreateAssayUserDto input);
         List<EditAssayUserDto> GetAssayOpers(string searchTxt);
+        List<Dtos.HtmlSelectDto> GetHtmlSelectAssayUsersByOrgCode(string orgCode);
     }
 }

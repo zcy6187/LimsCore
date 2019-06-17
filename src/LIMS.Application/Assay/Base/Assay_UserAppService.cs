@@ -108,9 +108,20 @@ namespace LIMS.Assay.Base
             return list;
         }
 
-        public List<EditAssayUserDto> GetAssayOpers(string searchTxt)
+        public List<Dtos.HtmlSelectDto> GetHtmlSelectAssayUsersByOrgCode(string orgCode)
         {
-            
+            var ztlist = _repository.GetAll().Where(x => !x.IsDeleted && x.OrgCode==orgCode).OrderByDescending(x => x.Id).ToList();
+            var list = ztlist.Select(x => new Dtos.HtmlSelectDto()
+            {
+                Key = x.Id.ToString(),
+                Value = x.UserName
+            }).ToList();
+
+            return list;
+        }
+
+        public List<EditAssayUserDto> GetAssayOpers(string searchTxt)
+        {         
             long loginId = AbpSession.UserId ?? 0;
             var userZt = this._userZtRep.GetAll().Where(x => x.UserId == loginId).Select(x=>x.ZtCode).ToArray();
             var rep = _repository.GetAll().Where(x => !x.IsDeleted && userZt.Contains(x.OrgCode)).ToList();

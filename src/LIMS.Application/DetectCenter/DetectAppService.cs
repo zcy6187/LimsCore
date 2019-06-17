@@ -12,6 +12,7 @@ using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -62,13 +63,16 @@ namespace LIMS.DetectCenter
             this._detectDuplicationModifyElements = detectDuplicationModifyElements;
             rowCreator = new ElementGatherInfo();
         }
+
+        #region 数据导入
         /// <summary>
-        /// 
+        /// 数据导入
         /// </summary>
         /// <param name="fileName"></param>
         /// <param name="isImport">true强制导入，false全部正确后再导入</param>
+        /// <param name="type">0-检测中心数据，1—锌业化验室数据</param>
         /// <returns></returns>
-        public ImportRetInfoDto UploadFile(string fileName, bool isImport)
+        public ImportRetInfoDto UploadFile(string fileName, bool isImport, int type)
         {
             /*状态码、描述、值*/
             string localFileName = Guid.NewGuid().ToString();
@@ -384,7 +388,15 @@ namespace LIMS.DetectCenter
             {
                 if (isImport || retList.Count == storeList.Count)  // 强制导入，或者全部正确时，将数据写入数据库
                 {
-                    WriteDataToTb(storeList, curTplSpecId, importHisId);
+                    if (type == 0)
+                    {
+                        WriteDataToTb(storeList, curTplSpecId, importHisId);
+                    }
+                    if (type == 1)
+                    {
+                        WriteDataToAllParallel(storeList, curTplSpecId, importHisId);
+                    }
+
                 }
 
             }
@@ -474,7 +486,7 @@ namespace LIMS.DetectCenter
              * 4. 更改子id数据中的mainID和用户信息，并插入到数据库中
              */
 
-            #region 第1步
+            #region 第1步 获取所有的元素值、操作员值、主ID
             // [mainIdVal,scanIdVal,selfCode,printTime,值]
             //  值以"&#&*"为分隔符（cellType+eleid+值）,-1 操作员，eleId
             foreach (var rowList in dataList)
@@ -629,6 +641,234 @@ namespace LIMS.DetectCenter
 
             return true;
         }
+
+        private bool WriteDataToAllParallel(List<List<string>> dataList, int specId, int hisId)
+        {
+            List<DuplicationInfoItems> duplicationList = new List<DuplicationInfoItems>();
+            List<DuplicationElements> duplicationEleList = new List<DuplicationElements>();
+            List<OperValInfo> operList = new List<OperValInfo>();
+            List<string> mainIdList = new List<string>(); // 主Id列表
+            List<string> scanIdList = new List<string>(); // 子id列表
+            var userId = AbpSession.UserId ?? 0;
+            var userList = this._assayUserRepostiroy.GetAll().OrderByDescending(x => x.Id);
+
+
+            /* 1. 获取所有的元素值、操作员值、主ID
+             * 2. 检测子ID是否异常-数据表中是否已经存在，如果有异常则返回异常（暂时先不检测）
+             * 3. 生成主条码信息，插入数据，并获取其ID
+             * 4. 根据主条码，获取所有的子条码信息；-因为是平行样，位于同一主条码下的所有平行码都得对应此信息；
+             *    更改子id数据中的mainID和用户信息，并插入到数据库中
+             */
+
+            #region 第1步 获取所有的元素值、操作员值、主ID
+            // [mainIdVal,scanIdVal,selfCode,printTime,值]
+            //  值以"&#&*"为分隔符（cellType+eleid+值）,-1 操作员，eleId
+            foreach (var rowList in dataList)
+            {
+                string mainId = rowList[0];
+                string scanId = rowList[1];
+                string selfCode = rowList[2];
+                string printTime = rowList[3];
+                mainIdList.Add(mainId);
+                scanIdList.Add(scanId);
+
+
+                for (int i = 4; i < rowList.Count; i++)
+                {
+                    string tmpStr = rowList[i];
+                    string[] valArray = tmpStr.Split("&#&*", StringSplitOptions.RemoveEmptyEntries);
+                    if (valArray[0] == "0") // 操作员
+                    {
+                        var operItem = new OperValInfo();
+                        operItem.scanId = scanId;
+                        operItem.eleId = int.Parse(valArray[1]);
+                        operItem.cellValIndex = int.Parse(valArray[2]);
+                        operItem.operName = valArray[3];
+                        var userItem = userList.Where(x => x.UserName == valArray[3]).FirstOrDefault();
+                        if (userItem != null)
+                        {
+                            operItem.operId = userItem.Id;
+                        }
+                        else
+                        {
+                            operItem.operId = -1;
+                        }
+                        operList.Add(operItem);
+                    }
+                    if (valArray[0] == "1") // 元素值
+                    {
+                        // 子ID
+                        var duplicateItem = new DuplicationInfoItems();
+                        duplicateItem.mainScanId = mainId;
+                        duplicateItem.scanId = scanId;
+                        duplicateItem.selfCode = selfCode;
+                        duplicateItem.mainId = int.Parse(valArray[2]); // 暂时存储，所在excel中的列,之后替换
+                        duplicateItem.modifyTime = DateTime.Now;
+                        duplicateItem.printTime = DateTime.Parse(printTime);
+                        duplicateItem.hisId = hisId;
+                        duplicateItem.operId = userId;
+                        duplicateItem.tplSpecId = specId;
+                        duplicationList.Add(duplicateItem);
+                        // 元素
+                        var duplicateEle = new DuplicationElements();
+                        duplicateEle.tplSpecId = specId;
+                        duplicateEle.tplEleId = int.Parse(valArray[1]);
+                        duplicateEle.eleValue = valArray[3];
+                        duplicateEle.desInfo = mainId; // // 暂时存储，主ID
+                        duplicateEle.modifyTime = DateTime.Now;
+                        duplicateEle.modifyUserId = userId;
+                        duplicateEle.modifyUserName = scanId; // 暂时存储，子ID
+                        duplicateEle.duplicateId = int.Parse(valArray[2]); // 暂时存储，所在excel中的列,之后替换
+                        duplicationEleList.Add(duplicateEle);
+                    }
+                }
+            }
+            #endregion
+
+            SqlOper.SqlHelper myDal = new SqlOper.SqlHelper();
+            #region 第3步  主条码插入数据库
+            // 获取所有mainItems
+            // 去除重复值
+            var distinctMainIdList = mainIdList.Distinct().ToList();
+            var newMainIdList = new List<string>();
+            newMainIdList.AddRange(distinctMainIdList);
+
+            var mainItems = this._detectMainInfo.GetAll().Where(x => distinctMainIdList.Contains(x.mainScanId)).ToList();
+            // 清除已经存在的MainId
+            foreach (var item in mainItems)
+            {
+                newMainIdList.Remove(item.mainScanId);
+            }
+
+            //获取主ID信息
+            var printMain = this._printRepostiroy.GetAll().Where(x => newMainIdList.Contains(x.MainScanId)).ToList();
+            List<DetectMainInfo> detectMainList = new List<DetectMainInfo>();
+            // 将没有主ID的数据插入，生成主ID
+            newMainIdList.ForEach(s =>
+            {
+                var printItem = printMain.FirstOrDefault(x => x.MainScanId == s);
+                if (printItem != null)
+                {
+                    DetectMainInfo mainItem = new DetectMainInfo();
+                    mainItem.operatorId = userId;
+                    mainItem.specId = specId;
+                    mainItem.mainScanId = s;
+                    mainItem.chs = printItem.chs;
+                    mainItem.fhtime = printItem.fhtime;
+                    mainItem.verdor = printItem.vendor;
+                    mainItem.IsDeleted = false;
+                    mainItem.createtime = DateTime.Now;
+                    mainItem.modifyTime = DateTime.Now;
+                    mainItem.fhId = -1;
+                    mainItem.hisId = hisId;
+                    detectMainList.Add(mainItem);
+                }
+            });
+            // 主条码插入到数据库中
+            myDal.WriteDetectMainsToDb(detectMainList);
+            #endregion
+
+            #region 第4步 修改子id数据 并插入到数据库
+            // 去除重复的子条码
+            var newScanIdList = scanIdList.Distinct().ToList();
+            // 主条码对应的所有签到信息
+            var allPrintList = this._printRepostiroy.GetAll().Where(x => distinctMainIdList.Contains(x.MainScanId) && x.TplSpecId == specId).ToList();
+            var allSubScanId = allPrintList.Select(x => x.ScanId).ToList();
+            // 主平行样ID去重(当前信息去重)
+            duplicationList = duplicationList.Distinct(new ComparerDuplication()).ToList();
+            // 获取主平行样及关联平行样（已存在的）
+            var allParallelList = this._detectDuplicationItems.GetAll().Where(x => allSubScanId.Contains(x.scanId) && x.tplSpecId == specId).ToList();
+
+            // 获取主ID
+            var curMainItems = this._detectMainInfo.GetAll().Where(x => distinctMainIdList.Contains(x.mainScanId) && x.specId == specId).ToList();
+            // 遍历主ID，将主ID的信息更新到子ID信息中
+            curMainItems.ForEach(item =>
+            {
+                duplicationList.Where(x => x.mainScanId == item.mainScanId).ToList().ForEach(subItem =>
+                {
+                    subItem.mainId = item.Id;
+                });
+            });
+            // 遍历主平行样ID，补充子平行样信息
+            // 1. 遍历主平行样
+            // 2. 检测主平行样是否已经存在。不存在，则生成平行样信息
+            // 3. 遍历子平行样，检测是否存在。不存在，则生成平行样信息
+            List<DuplicationInfoItems> insertDuplications = new List<DuplicationInfoItems>();
+            duplicationList.ForEach(item =>
+            {
+                var tmpParallelList = allParallelList.Where(x => x.mainScanId == item.mainScanId).ToList();
+
+                if (!tmpParallelList.Contains(item))
+                {
+                    insertDuplications.Add(item);
+                }
+                var tmpScanIdList = tmpParallelList.Select(x => x.scanId).ToList();
+                // 获取主条码下所有的子平行样(且不在duplicationItems中的)，这些条码都需要写入到数据库中
+                var allSubList = allPrintList.Where(x => x.MainScanId == item.mainScanId && x.ScanId != item.scanId && !tmpScanIdList.Contains(x.ScanId)).ToList();
+                allSubList.ForEach((subItem) =>
+                {
+                    var addSubItem = Helper.TransExp<DuplicationInfoItems, DuplicationInfoItems>.Trans(item);
+                    addSubItem.scanId = subItem.ScanId; // 更改子ID信息
+                    insertDuplications.Add(item);
+                });
+
+            });
+
+            // 将子条码写入到数据库中
+            myDal.WriteDetectDuplicationToDb(insertDuplications);
+            #endregion
+
+            #region 第5步 修改元素数据 并插入到数据库
+            // 从数据库中获取所有的平行样
+            var allDuplicateItems = this._detectDuplicationItems.GetAll().Where(x => distinctMainIdList.Contains(x.mainScanId) && x.tplSpecId == specId).ToList();
+            // 填充元素其它信息
+            duplicationEleList.ForEach(item =>
+            {
+                var operItem = operList.Where(x => x.eleId == item.tplEleId && x.cellValIndex == item.duplicateId && x.scanId == item.modifyUserName).FirstOrDefault();
+                if (operItem != null)
+                {
+                    item.operId = operItem.operId;
+                    item.operName = operItem.operName;
+                }
+                var curDuplicateItem = allDuplicateItems.Where(x => x.scanId == item.modifyUserName).First();
+                item.duplicateId = curDuplicateItem.Id;
+            });
+            var dupItemIds = allDuplicateItems.Select(x => x.Id).ToList();
+            // 获取已存在的平行样的元素信息
+            var eleList = this._detectDuplicationElements.GetAll().Where(x => dupItemIds.Contains(x.Id)).ToList();
+            // 平行样信息--有则不管，无则添加
+            List<DuplicationElements> dupEleList = new List<DuplicationElements>();
+            duplicationEleList.ForEach(item =>
+            {
+                var tmpDuplicationElements = Helper.TransExp<DuplicationElements, DuplicationElements>.Trans(item);
+                var dupExistEleItem = eleList.Where(x => x.tplEleId == item.tplEleId && x.duplicateId == item.duplicateId).FirstOrDefault();
+                if (dupExistEleItem == null)
+                {
+                    dupEleList.Add(item);
+                }
+
+                // 寻找当前元素的所有子平行样，如果不存在则添加。
+                var tmpDupItem = allDuplicateItems.Where(x => x.Id == item.duplicateId).First();
+                var allSubItemList = allDuplicateItems.Where(x => x.mainScanId == tmpDupItem.mainScanId).ToList();
+                allSubItemList.ForEach((subItem) =>
+                {
+                    var tmpSubEleItem = eleList.Where(x => x.tplEleId == item.tplEleId && x.duplicateId == subItem.Id).FirstOrDefault();
+                    if (tmpSubEleItem == null)
+                    {
+                        var insertEleItem = Helper.TransExp<DuplicationElements, DuplicationElements>.Trans(item);
+                        insertEleItem.duplicateId = subItem.Id;
+                        dupEleList.Add(insertEleItem);
+                    }
+                });
+            });
+
+            myDal.WriteDuplicationElementsToDb(dupEleList);
+            #endregion
+
+            return true;
+        }
+
+        #endregion
 
         public string DownLoadExcelBySpecId(int input)
         {
@@ -865,6 +1105,7 @@ namespace LIMS.DetectCenter
             return retData;
         }
 
+
         /// <summary>
         /// 获取修正值信息
         /// </summary>
@@ -954,7 +1195,7 @@ namespace LIMS.DetectCenter
             {
                 titleList.Add(item.ElementName);
             }
-            
+
             // 生成表体数据
             List<List<string>> tableList = new List<List<string>>();
             List<ModifyRowInfoDto> modifyRowList = new List<ModifyRowInfoDto>();
@@ -968,7 +1209,7 @@ namespace LIMS.DetectCenter
                 var tmpDataInfo = eleDict[item.Id];
                 var dupInfo = tmpDataInfo.duplicationInfo;
                 var modInfo = tmpDataInfo.modifyInfo;
-                TmpRowInfo rowInfo=rowCreator.GetElementInfoFromElementInfo(tplSpecId,tplEleList,dupInfo,modInfo);
+                TmpRowInfo rowInfo = rowCreator.GetElementInfoFromElementInfo(tplSpecId, tplEleList, dupInfo, modInfo);
                 rowList.AddRange(rowInfo.rowList);
                 ModifyRowInfoDto rowDto = new ModifyRowInfoDto();
                 rowDto.duplicateId = item.Id;
@@ -982,7 +1223,219 @@ namespace LIMS.DetectCenter
             return tableDto;
         }
 
-        private void GetElementInfoFromElementInfo(List<TplElement> tplEleList,List<TmpEleInfo> dupInfo,List<TmpEleInfo> modifyInfo)
+        /// <summary>
+        /// 批量更新修正值
+        /// </summary>
+        /// <param name="tplSpecId"></param>
+        /// <param name="beginTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="searchId"></param>
+        /// <param name="dateType"></param>
+        /// <returns></returns>
+        public HtmlDataOperRetDto PatchUpdateModificationItems(int tplSpecId, DateTime beginTime, DateTime endTime, string searchId, int dateType)
+        {
+            long userId = AbpSession.UserId ?? 0;
+            // 获取所有的平行样信息
+            var query = this._detectDuplicationItems.GetAll();
+            if (dateType == 0)
+            {
+                query = query.Where(x => x.printTime >= beginTime && x.printTime <= endTime);
+            }
+            if (dateType == 1)
+            {
+                query = query.Where(x => x.modifyTime >= beginTime && x.modifyTime <= endTime);
+            }
+            if (!string.IsNullOrEmpty(searchId))
+            {
+                query = query.Where(x => x.scanId.EndsWith(searchId));
+            }
+            if (tplSpecId > 0)
+            {
+                query = query.Where(x => x.tplSpecId == tplSpecId);
+            }
+            var duplicationItemList = query.ToList();
+            var duplicationIdList = duplicationItemList.Select(x => x.Id);
+            // 获取所有的修正值
+            var eleModifyList = this._detectDuplicationModifyElements.GetAll().Where(x => duplicationIdList.Contains(x.duplicateId)).ToList();
+            var eleModifyLookup = eleModifyList.ToLookup(x => x.duplicateId); // 修正值分类获取
+            // 获取所有的元素值
+            var eleList = this._detectDuplicationElements.GetAll().Where(x => duplicationIdList.Contains(x.duplicateId)).ToList();
+            var eleLookup = eleList.ToLookup(x => x.duplicateId); // 依据平行样id分类
+            // <平行样id，元素值集合>--所有平行样的值
+            Dictionary<int, TmpEleValues> eleDict = new Dictionary<int, TmpEleValues>(); // 元素值分类获取
+            // <元素id,元素信息>--所有元素title的信息
+            Dictionary<int, TmpEleTitle> eleTitleDict = new Dictionary<int, TmpEleTitle>();
+            foreach (var group in eleLookup)
+            {
+                int tmpItemId = group.Key;
+                List<TmpEleInfo> tmpEleList = new List<TmpEleInfo>();
+                List<TmpEleInfo> tmpEleModifyList = new List<TmpEleInfo>();
+                TmpEleValues eleObj = new TmpEleValues();
+                Dictionary<int, int> tmpEleDict = new Dictionary<int, int>(); // 元素及个数
+                Dictionary<int, int> tmpOperDict = new Dictionary<int, int>(); // 元素操作者及个数
+                // 平行样值存储
+                foreach (var eleItem in group)
+                {
+                    TmpEleInfo tmpEle = new TmpEleInfo();
+                    tmpEle.eleId = eleItem.tplEleId;
+                    tmpEle.eleValue = eleItem.eleValue;
+                    tmpEle.operId = eleItem.operId;
+                    tmpEle.operName = eleItem.operName;
+                    tmpEleList.Add(tmpEle);
+                }
+                // 修正值存储到字典中
+                if (eleModifyLookup.Contains(tmpItemId))
+                {
+                    var tmpValList = eleModifyLookup[tmpItemId];
+                    foreach (var eleItem in group)
+                    {
+                        TmpEleInfo tmpEle = new TmpEleInfo();
+                        tmpEle.eleId = eleItem.tplEleId;
+                        tmpEle.eleValue = eleItem.eleValue;
+                        tmpEle.operId = eleItem.operId;
+                        tmpEle.operName = eleItem.operName;
+                        tmpEleModifyList.Add(tmpEle);
+                    }
+                }
+                eleObj.duplicationInfo = tmpEleList;
+                eleObj.modifyInfo = tmpEleModifyList;
+                eleDict.Add(tmpItemId, eleObj);
+            }
+
+            // 获取所有的当前的元素信息
+            var tplEleList = this._elementRepository.GetAll().Where(x => x.TplSpecId == tplSpecId).OrderBy(x => x.OrderNo).ToList();
+
+            List<string> operSqlList = new List<string>();
+            #region 更新修正样的值
+            foreach (var dictItem in eleDict)
+            {
+                int curDupId=dictItem.Key;
+                var dupItemInfo=eleDict[curDupId];
+                var modifyItemInfo=dupItemInfo.modifyInfo;
+                var eleItemInfo=dupItemInfo.duplicationInfo;
+
+                // 存储平行样和修正样的值
+                Dictionary<int, double> eleDupDict = new Dictionary<int, double>(); // 所有元素信息
+                Dictionary<int, double> eleModifyDict = new Dictionary<int, double>(); // 修正样信息
+                Dictionary<int, string> eleModifyFlagDict = new Dictionary<int, string>(); // 修正样当前状态，1表示已存在，-1 表示 不存在。供之后数据库操作时，选择插入，还是添加；
+
+                // 遍历元素信息
+                foreach (var eleItem in tplEleList)
+                {
+                    var tmpDupEleList = eleItemInfo.Where(x => x.eleId == eleItem.Id).ToList();
+                    double tmpRetVal = 0.0;
+                    int eleCount = 0;
+                    // 遍历平行样中值
+                    foreach (var tmpDupItem in tmpDupEleList)
+                    {
+                        double tmpVal = 0.0;
+                        double.TryParse(tmpDupItem.eleValue, out tmpVal);
+                        tmpRetVal += tmpVal;
+                    }
+                    // 多个时，计算平均值
+                    if (eleCount > 0)
+                    {
+                        tmpRetVal = Math.Round((double)tmpRetVal / eleCount, 2, MidpointRounding.AwayFromZero);
+                    }
+                    eleDupDict.Add(eleItem.Id, tmpRetVal);
+                    // 修正值只有一个
+                    var modifyItem = modifyItemInfo.Where(x => x.eleId == eleItem.Id).FirstOrDefault();
+                    double modifyVal = 0.0;
+                    if (modifyItem != null)
+                    {
+                        double.TryParse(modifyItem.eleValue, out modifyVal);
+                        eleModifyFlagDict[eleItem.ElementId] = "1"; // 已存在，update
+                        eleModifyDict.Add(eleItem.Id, modifyVal); // 存储修正值
+                    }
+                    else
+                    {
+                        eleModifyFlagDict[eleItem.ElementId] = "-1"; // 不存在，add
+                        eleModifyDict.Add(eleItem.Id,eleDupDict[eleItem.ElementId]); // 存储平行样的值
+                    }                   
+                }
+
+                if (tplSpecId == 1682) // 表示锌精矿
+                {
+                    eleDupDict[9010] = eleDupDict[9010] - eleDupDict[9016]; // Zn=Avg(Zn)-Co的值
+                    if (eleModifyFlagDict[9010] == "-1") // 如果锌精矿的值，不存在，则将生成的锌精矿的值反向更改
+                    {
+                        eleModifyDict[9010] = eleDupDict[9010];
+                    }
+                }
+
+                // 元素数据
+                foreach (var eleItem in tplEleList)
+                {
+                    ModifyEditInfoDto tmpModify = new ModifyEditInfoDto();
+                    tmpModify.EleId = eleItem.Id;
+                    tmpModify.EleName = eleItem.ElementName;
+                    tmpModify.DuplicationStr = eleModifyFlagDict[eleItem.Id]; // 存储其状态，表示将来，应该update还是add
+                    tmpModify.EleValue = eleDupDict[eleItem.Id].ToString();
+                    operSqlList.Add(CreateModifyElementsOperStr(tmpModify,curDupId,tplSpecId,userId));
+                }
+            }
+            #endregion
+
+            SqlOper.SqlHelper sqlHelper = new SqlOper.SqlHelper();
+            sqlHelper.BulkInsert(operSqlList);
+
+            var operInfo=new HtmlDataOperRetDto();
+            operInfo.Code = 1;
+            operInfo.Message = "操作成功！";
+            return operInfo;
+        }
+
+        private string CreateModifyElementsOperStr(ModifyEditInfoDto modifyInfo,int dupId,int tplSpecId,long userId)
+        {
+            string curTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            string formatStr = @"insert into assay_detectDuplicationModifyElements (
+                [duplicateId],
+                [tplSpecId],
+                [tplEleId],
+                [tplEleName],
+                [eleValue],
+                [modifyTime],
+                [modifyUserId],
+                [IsDeleted],
+                [flag],
+                [desInfo]) values 
+('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}')";
+            if (modifyInfo.DuplicationStr == "1") // 修改
+            {
+                formatStr = @"update assay_detectDuplicationModifyElements set [eleValue]='{0}' where [duplicateId]='{1}' and [tplEleId]='{2}';
+update assay_detectDuplicationModifyElements set [modifyUserId]='{3}' where [duplicateId]='{1}' and [tplEleId]='{2}';
+update assay_detectDuplicationModifyElements set [modifyTime]='{4}' where [duplicateId]='{1}' and [tplEleId]='{2}';
+update assay_detectDuplicationModifyElements set [desInfo]='添加' where [duplicateId]='{1}' and [tplEleId]='{2}';";
+                string updateStr = string.Format(formatStr,
+                    modifyInfo.EleValue,
+                    dupId,
+                    modifyInfo.EleId,
+                    userId,
+                    curTime);
+                return updateStr;
+            }
+            else // 添加
+            {
+                string addSql = string.Format(formatStr,
+                dupId,
+                tplSpecId,
+                modifyInfo.EleId,
+                modifyInfo.EleName,
+                modifyInfo.EleValue,
+                curTime,
+                userId,
+                "0",
+                "0",
+                "添加"
+                );
+                return addSql;
+            }
+           
+           
+            
+        }
+
+        private void GetElementInfoFromElementInfo(List<TplElement> tplEleList, List<TmpEleInfo> dupInfo, List<TmpEleInfo> modifyInfo)
         {
             foreach (var eleItem in tplEleList)
             {
@@ -994,18 +1447,199 @@ namespace LIMS.DetectCenter
         public List<ModifyEditInfoDto> GetSingleModifyInfo(int dupId)
         {
             // 获取所有的平行样信息
-            var dupItem = this._detectDuplicationItems.GetAll().Where(x=>x.Id==dupId).FirstOrDefault();
+            var dupItem = this._detectDuplicationItems.GetAll().Where(x => x.Id == dupId).FirstOrDefault();
             if (dupItem != null)
             {
-                int tplSpecId =dupItem.tplSpecId;
-                var eleList=this._elementRepository.GetAll().Where(x => x.TplSpecId == tplSpecId).OrderBy(x=>x.OrderNo).ToList(); // 所有元素值
-                var dupEleList=this._detectDuplicationElements.GetAll().Where(x => x.duplicateId == dupId).ToList(); // 所有平行样的值
+                int tplSpecId = dupItem.tplSpecId;
+                var eleList = this._elementRepository.GetAll().Where(x => x.TplSpecId == tplSpecId).OrderBy(x => x.OrderNo).ToList(); // 所有元素值
+                var dupEleList = this._detectDuplicationElements.GetAll().Where(x => x.duplicateId == dupId).ToList(); // 所有平行样的值
                 var dupModifyList = this._detectDuplicationModifyElements.GetAll().Where(x => x.duplicateId == dupId).ToList(); // 所有修正样的值
 
-                return this.rowCreator.GetModifyElementInfo(tplSpecId,eleList,dupEleList,dupModifyList);
+                return this.rowCreator.GetModifyElementInfo(tplSpecId, eleList, dupEleList, dupModifyList);
             }
             return null;
         }
+
+        public List<DuplicationEleInfoDto> GetDuplicationEleInfo(int dupId)
+        {
+            var dupEleList = this._detectDuplicationElements.GetAll().Where(x => x.duplicateId == dupId).ToList(); // 所有平行样的值
+            List<DuplicationEleInfoDto> modifyList = new List<DuplicationEleInfoDto>();
+            foreach (var item in dupEleList)
+            {
+                DuplicationEleInfoDto tmpItem = new DuplicationEleInfoDto();
+                tmpItem.DupId = item.Id;
+                tmpItem.EleId = item.tplEleId;
+                tmpItem.EleName = item.tplEleName;
+                tmpItem.EleValue = item.eleValue;
+                tmpItem.OperId = item.operId;
+                modifyList.Add(tmpItem);
+            }
+            return modifyList;
+        }
+
+        // 获取单个元素的所有平行样值
+        public List<DuplicationEleInfoDto> GetDuplicationEleInfoByEleId(int dupId, int eleId)
+        {
+            var dupEleList = this._detectDuplicationElements.GetAll().Where(x => x.duplicateId == dupId && x.tplEleId == eleId).ToList(); // 所有平行样的值
+            List<DuplicationEleInfoDto> modifyList = new List<DuplicationEleInfoDto>();
+            foreach (var item in dupEleList)
+            {
+                DuplicationEleInfoDto tmpItem = new DuplicationEleInfoDto();
+                tmpItem.DupId = item.Id;
+                tmpItem.EleId = item.tplEleId;
+                tmpItem.EleName = item.tplEleName;
+                tmpItem.EleValue = item.eleValue;
+                tmpItem.OperId = item.operId;
+                modifyList.Add(tmpItem);
+            }
+            return modifyList;
+        }
+
+        // 修改修正值
+        public HtmlDataOperRetDto AddOrUpdateDuplicationModifyInfo(int dupId, int eleId, string eleValue)
+        {
+            if (!string.IsNullOrEmpty(eleValue))
+            {
+                var dupItem = this._detectDuplicationItems.GetAll().Where(x => x.Id == dupId).FirstOrDefault();
+                long userId = AbpSession.UserId ?? 0;
+                if (dupItem != null)
+                {
+                    var dupModifyItem = this._detectDuplicationModifyElements.GetAll().Where(x => x.duplicateId == dupId && x.tplEleId == eleId).FirstOrDefault();
+                    if (dupModifyItem != null)
+                    {
+                        dupModifyItem.eleValue = eleValue;
+                        dupModifyItem.modifyTime = DateTime.Now;
+                        dupModifyItem.modifyUserId = userId;
+                        this._detectDuplicationModifyElements.Update(dupModifyItem);
+                    }
+                    else
+                    {
+                        DuplicationModifyElements tmpDupModifyElement = new DuplicationModifyElements();
+                        tmpDupModifyElement.tplEleId = eleId;
+                        tmpDupModifyElement.duplicateId = dupId;
+                        tmpDupModifyElement.modifyTime = DateTime.Now;
+                        tmpDupModifyElement.modifyUserId = userId;
+                        tmpDupModifyElement.eleValue = eleValue;
+                        tmpDupModifyElement.flag = 1; // 表示修改值
+                        tmpDupModifyElement.IsDeleted = false;
+                        tmpDupModifyElement.tplSpecId = dupItem.tplSpecId;
+                        this._detectDuplicationModifyElements.Insert(tmpDupModifyElement);
+                    }
+
+                    HtmlDataOperRetDto ret = new HtmlDataOperRetDto();
+                    ret.Code = 1;
+                    ret.Message = "操作成功!";
+                    return ret;
+                }
+            }
+            HtmlDataOperRetDto operRet = new HtmlDataOperRetDto();
+            operRet.Code = -1;
+            operRet.Message = "操作失败!";
+            return operRet;
+        }
+
+        #region 修改或添加平行样的值
+        // 添加或者更新平行样
+        public HtmlDataOperRetDto AddOrUpdateDuplicationParallelInfo(int dupId, int eleId, string formObj)
+        {
+            if (!string.IsNullOrEmpty(formObj))
+            {
+                var dupItem = this._detectDuplicationItems.GetAll().Where(x => x.Id == dupId).FirstOrDefault();
+                long userId = AbpSession.UserId ?? 0;
+
+                if (dupItem != null)
+                {
+                    var obj = Newtonsoft.Json.JsonConvert.DeserializeObject<ExpandoObject>(formObj);
+                    List<ParallelEleInfo> objList = GetParallelListFromDynamicObj(obj, eleId);
+                    WriteParallelListToDb(objList, dupItem, eleId);
+                }
+
+                HtmlDataOperRetDto ret = new HtmlDataOperRetDto();
+                ret.Code = 1;
+                ret.Message = "操作成功!";
+                return ret;
+            }
+            HtmlDataOperRetDto operRet = new HtmlDataOperRetDto();
+            operRet.Code = -1;
+            operRet.Message = "操作失败!";
+            return operRet;
+        }
+        // 根据表单动态对象，生成平行样信息
+        private List<ParallelEleInfo> GetParallelListFromDynamicObj(ExpandoObject obj, int eleId)
+        {
+            List<ParallelEleInfo> parallelList = new List<ParallelEleInfo>();
+            var tmpObj = (IDictionary<string, object>)obj;
+            foreach (var item in tmpObj)
+            {
+                dynamic tObj = tmpObj[item.Key];
+                string dupId = tObj.dupId;
+                string eleValue = tObj.eleValue;
+                string operId = tObj.operValue;
+
+                if (!string.IsNullOrEmpty(eleValue))
+                {
+                    ParallelEleInfo tmpParallel = new ParallelEleInfo();
+                    tmpParallel.dupId = int.Parse(dupId);
+                    tmpParallel.eleId = eleId;
+                    tmpParallel.eleValue = eleValue;
+                    tmpParallel.operId = int.Parse(operId);
+                    parallelList.Add(tmpParallel);
+                }
+            }
+
+            return parallelList;
+        }
+        // 将平行样数据写入到数据库中
+        private void WriteParallelListToDb(List<ParallelEleInfo> parallelList, DuplicationInfoItems duplicationItem, int eleId)
+        {
+            var existList = this._detectDuplicationElements.GetAll().Where(x => x.duplicateId == duplicationItem.Id && x.tplEleId == eleId).ToList();
+            var operList = this._assayUserRepostiroy.GetAll().Where(x => x.OrgCode == "00010005").ToList();
+            var userId = AbpSession.UserId ?? 0;
+            foreach (var item in parallelList)
+            {
+                if (item.dupId > 0) // Update
+                {
+                    var tempItem = existList.Where(x => x.Id == item.dupId).FirstOrDefault();
+                    if (tempItem != null && (tempItem.eleValue != item.eleValue || tempItem.operId != item.operId))
+                    {
+                        if (item.operId > 0)
+                        {
+                            var tmpOper = operList.Where(x => x.Id == item.operId).First();
+                            tempItem.operId = tmpOper.Id;
+                            tempItem.operName = tmpOper.UserName;
+                        }
+                        tempItem.eleValue = item.eleValue;
+                        tempItem.modifyUserId = userId;
+                        tempItem.modifyTime = DateTime.Now;
+                        tempItem.desInfo = "修改";
+                        this._detectDuplicationElements.Update(tempItem);
+                    }
+                }
+                else // Add
+                {
+                    var tmpItem = new DuplicationElements();
+                    tmpItem.duplicateId = duplicationItem.Id;
+                    tmpItem.tplEleId = eleId;
+                    tmpItem.tplSpecId = duplicationItem.tplSpecId;
+                    tmpItem.eleValue = item.eleValue;
+                    tmpItem.operId = 0;
+                    if (item.operId > 0)
+                    {
+                        var tmpOper = operList.Where(x => x.Id == item.operId).First();
+                        tmpItem.operId = tmpOper.Id;
+                        tmpItem.operName = tmpOper.UserName;
+                    }
+                    tmpItem.IsDeleted = false;
+                    tmpItem.modifyUserId = userId;
+                    tmpItem.modifyTime = DateTime.Now;
+                    tmpItem.desInfo = "添加";
+                    this._detectDuplicationElements.Insert(tmpItem);
+                }
+            }
+
+        }
+
+        #endregion
 
         class ElementGatherInfo // 元素数据汇总的算法
         {
@@ -1016,9 +1650,10 @@ namespace LIMS.DetectCenter
                 switch (tplSpecId)
                 {
                     case 1682:
-                        ret=GetElementInfoFromElementInfoZn(tplEleList,dupInfo,modifyInfo);
+                        ret = GetElementInfoFromElementInfoZn(tplEleList, dupInfo, modifyInfo, 0);
                         break;
                     default:
+                        ret = GetElementInfoFromElementInfoZn(tplEleList, dupInfo, modifyInfo, -1);
                         break;
                 }
                 return ret;
@@ -1027,20 +1662,22 @@ namespace LIMS.DetectCenter
             // 获取单条平行样的所有化验结果和修正值
             public List<ModifyEditInfoDto> GetModifyElementInfo(int tplSpecId, List<TplElement> tplEleList, List<DuplicationElements> dupInfo, List<DuplicationModifyElements> modifyInfo)
             {
-                List<ModifyEditInfoDto> ret =new List<ModifyEditInfoDto>();
+                List<ModifyEditInfoDto> ret = new List<ModifyEditInfoDto>();
                 switch (tplSpecId)
                 {
                     case 1682:
-                        ret = GetModifyElementInfoZn(tplEleList, dupInfo, modifyInfo);
+                        ret = GetModifyElementInfoZn(tplEleList, dupInfo, modifyInfo, 0);
                         break;
                     default:
+                        ret = GetModifyElementInfoZn(tplEleList, dupInfo, modifyInfo, -1);
                         break;
                 }
                 return ret;
             }
 
-            // 锌精矿的算法
-            private TmpRowInfo GetElementInfoFromElementInfoZn(List<TplElement> tplEleList, List<TmpEleInfo> dupInfo, List<TmpEleInfo> modifyInfo)
+            // 具体算法
+            // flag代表当前的算法标识
+            private TmpRowInfo GetElementInfoFromElementInfoZn(List<TplElement> tplEleList, List<TmpEleInfo> dupInfo, List<TmpEleInfo> modifyInfo, int flag)
             {
                 Dictionary<int, double> eleDupDict = new Dictionary<int, double>();
                 Dictionary<int, double> eleModifyDict = new Dictionary<int, double>();
@@ -1052,7 +1689,7 @@ namespace LIMS.DetectCenter
                     int eleCount = 0;
                     string dupStr = string.Empty;
                     // 遍历平行样中值
-                    foreach (var tmpDupItem in tmpDupEleList) 
+                    foreach (var tmpDupItem in tmpDupEleList)
                     {
                         double tmpVal = 0.0;
                         double.TryParse(tmpDupItem.eleValue, out tmpVal);
@@ -1076,22 +1713,26 @@ namespace LIMS.DetectCenter
                     }
 
                     // 多个时计算平均值
-                    if (eleCount > 0) 
+                    if (eleCount > 0)
                     {
                         tmpRetVal = Math.Round((double)tmpRetVal / eleCount, 2, MidpointRounding.AwayFromZero);
                     }
-                    eleDupDict.Add(eleItem.Id,tmpRetVal);
+                    eleDupDict.Add(eleItem.Id, tmpRetVal);
 
                     // 修正值只有一个
-                    var modifyItem =modifyInfo.Where(x => x.eleId == eleItem.Id).FirstOrDefault(); 
+                    var modifyItem = modifyInfo.Where(x => x.eleId == eleItem.Id).FirstOrDefault();
                     double modifyVal = 0.0;
                     if (modifyItem != null)
                     {
                         double.TryParse(modifyItem.eleValue, out modifyVal);
                     }
-                    eleModifyDict.Add(eleItem.Id,modifyVal); // 存储修正值
+                    eleModifyDict.Add(eleItem.Id, modifyVal); // 存储修正值
                 }
-                eleDupDict[9010] = eleDupDict[9010] - eleDupDict[9016]; // Zn=Avg(Zn)-Co的值
+                if (flag == 0) // flag=0 表示锌精矿
+                {
+                    eleDupDict[9010] = eleDupDict[9010] - eleDupDict[9016]; // Zn=Avg(Zn)-Co的值
+                }
+
 
                 string duplicationInfoStr = eleSb.ToString().TrimEnd().Trim(',');
                 List<string> dupItemList = new List<string>();
@@ -1106,15 +1747,16 @@ namespace LIMS.DetectCenter
                     {
                         dupItemList.Add(eleDupDict[eleItem.Id].ToString());
                     }
-                    
+
                 }
                 TmpRowInfo tmpRow = new TmpRowInfo();
                 tmpRow.rowList = dupItemList;
                 tmpRow.duplicationStr = duplicationInfoStr;
                 return tmpRow;
             }
-            // 锌精矿的算法
-            private List<ModifyEditInfoDto> GetModifyElementInfoZn(List<TplElement> tplEleList, List<DuplicationElements> dupInfo, List<DuplicationModifyElements> modifyInfo)
+            // 具体算法
+            // flag代表当前的算法标识
+            private List<ModifyEditInfoDto> GetModifyElementInfoZn(List<TplElement> tplEleList, List<DuplicationElements> dupInfo, List<DuplicationModifyElements> modifyInfo, int flag)
             {
                 Dictionary<int, double> eleDupDict = new Dictionary<int, double>();
                 Dictionary<int, string> eleDupStrDict = new Dictionary<int, string>();
@@ -1144,6 +1786,7 @@ namespace LIMS.DetectCenter
                             }
                         }
                     }
+                    eleDupStrDict.Add(eleItem.Id, dupStr);
                     // 多个时计算平均值
                     if (eleCount > 0)
                     {
@@ -1160,7 +1803,10 @@ namespace LIMS.DetectCenter
                     }
                     eleModifyDict.Add(eleItem.Id, modifyVal); // 存储修正值
                 }
-                eleDupDict[9010] = eleDupDict[9010] - eleDupDict[9016]; // Zn=Avg(Zn)-Co的值
+                if (flag == 0) // flag=0 表示锌精矿
+                {
+                    eleDupDict[9010] = eleDupDict[9010] - eleDupDict[9016]; // Zn=Avg(Zn)-Co的值
+                }
 
                 List<ModifyEditInfoDto> retItemList = new List<ModifyEditInfoDto>();
                 // 元素数据
@@ -1170,7 +1816,7 @@ namespace LIMS.DetectCenter
                     tmpModify.EleId = eleItem.Id;
                     tmpModify.EleName = eleItem.ElementName;
                     tmpModify.DuplicationStr = eleDupStrDict[eleItem.Id];
-                    tmpModify.EleValue = eleDupDict[eleItem.Id];
+                    tmpModify.EleValue = eleDupDict[eleItem.Id].ToString();
                     retItemList.Add(tmpModify);
                 }
                 return retItemList;
@@ -1248,6 +1894,15 @@ namespace LIMS.DetectCenter
         {
             public List<string> rowList { get; set; }
             public string duplicationStr { get; set; }
+        }
+
+        class ParallelEleInfo
+        {
+            public int dupId { get; set; }
+            public int eleId { get; set; }
+            public string eleValue { get; set; }
+            public int operId { get; set; }
+
         }
     }
 }

@@ -44,6 +44,15 @@ namespace LIMS.DetectCenter.Dto
         public int EleId { get; set; }
         public string EleName { get; set; }
         public string DuplicationStr { get; set; }
-        public double EleValue { get; set; }
+        public string EleValue { get; set; }
+    }
+
+    public class DuplicationEleInfoDto
+    {
+        public int DupId { get; set; }
+        public int EleId { get; set; }
+        public string EleName { get; set; }
+        public string EleValue { get; set; }
+        public int OperId { get; set; }
     }
 }
