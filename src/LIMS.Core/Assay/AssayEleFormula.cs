@@ -17,6 +17,7 @@ namespace LIMS.Assay
         public string intro { get; set; }
         public DateTime lastModifyTime { get; set; }
         public long operatorId { get; set; }
+        public int flag { get; set; }
     }
 
     [Table("assay_formulaPrams")]
@@ -30,8 +31,8 @@ namespace LIMS.Assay
     [Table("assay_const")]
     public class AssayConst : Entity,ISoftDelete
     {
-        public double constVal { get; set; }
-        public string cType { get; set; }
+        public decimal constVal { get; set; }
+        public int elementId { get; set; }
         public string intro { get; set; }
         public long operatorId { get; set; }
         public DateTime lastModifyTime { get; set; }

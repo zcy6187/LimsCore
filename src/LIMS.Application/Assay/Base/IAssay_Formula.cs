@@ -13,10 +13,12 @@ namespace LIMS.Assay.Base
         HtmlDataOperRetDto DeleteFormulaByFormulaId(int input);
         HtmlDataOperRetDto AddFormulaById(int input, CreateFormulaDto formulaInfo);
         HtmlDataOperRetDto UpdateFormulaById(int input, CreateFormulaDto formula);
+        HtmlDataOperRetDto SetDefaultFormulaById(int input);
 
         HtmlDataOperRetDto DeleteConstById(int input);
         HtmlDataOperRetDto AddConst(CreateConstDto input);
         HtmlDataOperRetDto EditConst(CreateConstDto input,int inputId);
         List<CreateConstDto> GetAllConst();
+        List<CreateConstDto> GetConstByEleId(int elementId);
     }
 }

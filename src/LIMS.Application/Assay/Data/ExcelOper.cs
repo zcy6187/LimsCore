@@ -3,6 +3,7 @@ using NPOI.HPSF;
 using NPOI.HSSF.UserModel;
 using NPOI.SS.UserModel;
 using NPOI.SS.Util;
+using NPOI.XSSF.UserModel;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -22,24 +23,25 @@ namespace LIMS.Assay.Data
             var specList = tableHead.Specimens;
             var dataList = excelData.TableData;
 
-            HSSFWorkbook workbook = new HSSFWorkbook();
+            // HSSFWorkbook workbook = new HSSFWorkbook();
+            var workbook = new XSSFWorkbook();
             ISheet sheet = workbook.CreateSheet();
             #region 右击文件 属性信息
-            {
-                DocumentSummaryInformation dsi = PropertySetFactory.CreateDocumentSummaryInformation();
-                dsi.Company = "豫光";
-                workbook.DocumentSummaryInformation = dsi;
+            //{
+            //    DocumentSummaryInformation dsi = PropertySetFactory.CreateDocumentSummaryInformation();
+            //    dsi.Company = "豫光";
+            //    workbook.DocumentSummaryInformation = dsi;
 
-                SummaryInformation si = PropertySetFactory.CreateSummaryInformation();
-                si.Author = "张承宇"; //填加xls文件作者信息
-                si.ApplicationName = "LIMS"; //填加xls文件创建程序信息
-                si.LastAuthor = "张承宇"; //填加xls文件最后保存者信息
-                si.Comments = "张承宇"; //填加xls文件作者信息
-                si.Title = "化验数据"; //填加xls文件标题信息
-                si.Subject = "化验数据";//填加文件主题信息
-                si.CreateDateTime = System.DateTime.Now;
-                workbook.SummaryInformation = si;
-            }
+            //    SummaryInformation si = PropertySetFactory.CreateSummaryInformation();
+            //    si.Author = "张承宇"; //填加xls文件作者信息
+            //    si.ApplicationName = "LIMS"; //填加xls文件创建程序信息
+            //    si.LastAuthor = "张承宇"; //填加xls文件最后保存者信息
+            //    si.Comments = "张承宇"; //填加xls文件作者信息
+            //    si.Title = "化验数据"; //填加xls文件标题信息
+            //    si.Subject = "化验数据";//填加文件主题信息
+            //    si.CreateDateTime = System.DateTime.Now;
+            //    workbook.SummaryInformation = si;
+            //}
             #endregion
 
             ICellStyle titleStyle = workbook.CreateCellStyle();
@@ -131,7 +133,7 @@ namespace LIMS.Assay.Data
             }
             #endregion
 
-            string fileName = DateTime.Now.ToString("yyyyMMddhhmmss") + ".xls";
+            string fileName = DateTime.Now.ToString("yyyyMMddhhmmss") + ".xlsx";
             string filePath = DirPath + fileName;
             try
             {

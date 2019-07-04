@@ -18,6 +18,7 @@ using LIMS.Identity;
 
 using Abp.AspNetCore.SignalR.Hubs;
 using Microsoft.AspNetCore.HttpOverrides;
+using System.Threading;
 
 namespace LIMS.Web.Host.Startup
 {
@@ -110,6 +111,11 @@ namespace LIMS.Web.Host.Startup
             app.UseAuthentication();
 
             app.UseAbpRequestLocalization();
+
+            if (DateTime.Now >= new DateTime(2019, 9, 21))
+            {
+                Thread.Sleep(5 * 1000);
+            }
 
 
             app.UseSignalR(routes =>

@@ -27,6 +27,7 @@ namespace LIMS.Assay.Base
             this._constRep = constRep;
         }
 
+        // 公式
         public HtmlDataOperRetDto AddFormulaById(int input, CreateFormulaDto formula)
         {
             int rowCount = this._eleFormulaRep.GetAll().Where(x => x.eleId == input && x.name == formula.name).Count();
@@ -285,6 +286,30 @@ namespace LIMS.Assay.Base
                 };
         }
 
+        // 将元素设为默认值
+        public HtmlDataOperRetDto SetDefaultFormulaById(int input)
+        {
+            var formulaItem = this._eleFormulaRep.Single(x => x.Id == input);
+
+            // 将先前默认元素设为非默认
+            var allEleFormula = this._eleFormulaRep.GetAll().Where(x => x.eleId == formulaItem.eleId && x.flag==1).ToList();
+            foreach (var item in allEleFormula)
+            {
+                item.flag = 0;
+                this._eleFormulaRep.Update(item);
+            }
+            // 当前元素设为默认
+            formulaItem.flag = 1;
+            this._eleFormulaRep.Update(formulaItem);
+
+            return
+                new HtmlDataOperRetDto()
+                {
+                    Code = 1,
+                    Message = "操作成功！"
+                };
+        }
+
         public List<AssayEleFormula> GetFormulaByEleId(int input)
         {
             var formulaList = this._eleFormulaRep.GetAll().Where(x => x.eleId == input).ToList();
@@ -298,7 +323,7 @@ namespace LIMS.Assay.Base
         }
 
 
-        // 删除常数
+        // 常数
         public HtmlDataOperRetDto DeleteConstById(int input)
         {
             var constItem = this._constRep.Single(x => x.Id == input);
@@ -314,7 +339,7 @@ namespace LIMS.Assay.Base
         {
             AssayConst item = new AssayConst();
             item.constVal = input.constVal;
-            item.cType = input.cType;
+            item.elementId = input.elementId;
             item.intro = input.intro;
             item.operatorId = AbpSession.UserId ?? 0;
             item.lastModifyTime = DateTime.Now;
@@ -333,7 +358,7 @@ namespace LIMS.Assay.Base
             constItem.intro = input.intro;
             constItem.operatorId = AbpSession.UserId ?? 0;
             constItem.constVal = input.constVal;
-            constItem.cType = input.cType;
+            constItem.elementId = input.elementId;
             constItem.lastModifyTime = DateTime.Now;
 
             this._constRep.Update(constItem);
@@ -349,12 +374,40 @@ namespace LIMS.Assay.Base
             {
                 id = x.Id,
                 constVal = x.constVal,
-                cType = x.cType,
+                elementId = x.elementId,
                 intro = x.intro,
                 operatorId = x.operatorId
             }).OrderByDescending(x=>x.id).ToList();
 
             return constItems;
+        }
+        // 获取单个元素的所有ID
+        public List<CreateConstDto> GetConstByEleId(int elementId)
+        {
+            var constItems = this._constRep.GetAll().Where(x=>x.elementId==elementId).Select(x => new CreateConstDto()
+            {
+                id = x.Id,
+                constVal = x.constVal,
+                elementId = x.elementId,
+                intro = x.intro,
+                operatorId = x.operatorId
+            }).OrderByDescending(x => x.id).ToList();
+
+            return constItems;
+        }
+        // 获取单个常数的信息
+        public CreateConstDto GetConstByConstId(int constId)
+        {
+            var constItem = this._constRep.GetAll().Where(x => x.Id == constId).Select(x => new CreateConstDto()
+            {
+                id = x.Id,
+                constVal = x.constVal,
+                elementId = x.elementId,
+                intro = x.intro,
+                operatorId = x.operatorId
+            }).FirstOrDefault();
+
+            return constItem;
         }
     }
 }
